@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TURCLON - Level Lab (Editor di Livelli 16-Bit)</title>
+    <link rel="stylesheet" href="editor.css">
+</head>
+<body>
+
+    <!-- TOOLBAR SUPERIORE -->
+    <header>
+        <div class="logo-area">
+            <span class="logo-title">TURCLON</span>
+            <span class="tagline">LEVEL LAB</span>
+        </div>
+
+        <div class="header-tools">
+            <div class="tool-group">
+                <label for="input-width">Larghezza:</label>
+                <input type="number" id="input-width" min="20" max="300" value="100">
+                <label for="input-height">Altezza:</label>
+                <input type="number" id="input-height" min="10" max="40" value="14">
+                <button id="btn-resize" class="btn-editor">Applica</button>
+            </div>
+
+            <div class="tool-group">
+                <label>Zoom:</label>
+                <button id="btn-zoom-out" class="btn-editor">−</button>
+                <span id="zoom-level">2x</span>
+                <button id="btn-zoom-in" class="btn-editor">+</button>
+            </div>
+
+            <button id="btn-clear" class="btn-editor" title="Svuota l'intera griglia">Pulisci</button>
+            <button id="btn-load-default" class="btn-editor" title="Carica il Livello 1 originale">Carica Livello 1</button>
+            <button id="btn-export" class="btn-editor">Esporta JSON</button>
+            <button id="btn-import" class="btn-editor">Importa JSON</button>
+            <button id="btn-play-test" class="btn-editor btn-play">▶ GIOCA SUBITO!</button>
+        </div>
+    </header>
+
+    <!-- AREA PRINCIPALE -->
+    <div class="main-content">
+        <!-- SIDEBAR PALETTE -->
+        <aside class="sidebar">
+            <h3>Palette Elementi</h3>
+
+            <div class="palette-grid" id="palette-container">
+                <!-- Verrà popolato dinamicamente da editor.js con i tipi di tile -->
+            </div>
+
+            <div class="editor-tips">
+                <p><strong>GUIDA VELOCE:</strong></p>
+                <p>• <strong>Click / Trascina Sx:</strong> Dipingi elemento</p>
+                <p>• <strong>Tasto Destro:</strong> Cancella blocco</p>
+                <p>• <strong>Shift + Rotellina:</strong> Scorrimento orizzontale</p>
+            </div>
+        </aside>
+
+        <!-- VIEWPORT CENTRALE CON CANVAS SCORREVOLE -->
+        <main class="canvas-viewport" id="viewport">
+            <canvas id="editor-canvas"></canvas>
+            <div class="statusbar" id="statusbar">Col: 0, Riga: 0 | Tile: Solido (1)</div>
+        </main>
+    </div>
+
+    <!-- MODALE ESPORTA / IMPORTA JSON -->
+    <div id="json-modal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2 id="modal-title">Esportazione Livello JSON</h2>
+                <button id="modal-close-btn" class="modal-close">&times;</button>
+            </div>
+            <textarea id="json-output" class="json-textarea" spellcheck="false"></textarea>
+            <div class="modal-footer">
+                <button id="btn-copy-json" class="btn-editor">Copia negli Appunti</button>
+                <button id="btn-download-json" class="btn-editor">Scarica File .json</button>
+                <button id="btn-apply-import" class="btn-editor btn-play hidden">Carica nel Canvas</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modulo JavaScript dell'Editor -->
+    <script type="module" src="editor.js"></script>
+</body>
+</html>

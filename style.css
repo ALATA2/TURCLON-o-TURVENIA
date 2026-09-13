@@ -1,0 +1,269 @@
+/*
+ * TURCLON - 16-Bit Neo-Geo Arcade Stylesheet
+ * Responsive canvas, arcade bezel, overlays e controlli touch.
+ */
+
+:root {
+    --cyber-blue: #00e5ff;
+    --neon-green: #39ff14;
+    --neo-yellow: #ffe600;
+    --hot-pink: #ff007f;
+    --danger-red: #ff1744;
+    --dark-bg: #070913;
+    --bezel-color: #121624;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: var(--dark-bg);
+    font-family: 'Courier New', Courier, monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Container principale del gioco */
+#game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: radial-gradient(circle at center, #171d33 0%, #060810 100%);
+}
+
+/* Canvas con pixel art senza sfocature */
+#game-canvas {
+    display: block;
+    background-color: #000;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: -webkit-crisp-edges;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    box-shadow: 0 0 30px rgba(0, 229, 255, 0.25), 0 0 10px rgba(0, 0, 0, 0.8);
+    border: 2px solid #232b42;
+    border-radius: 4px;
+}
+
+/* Effetto Scanlines CRT opzionale */
+.scanlines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+    background-size: 100% 4px;
+    z-index: 5;
+    opacity: 0.6;
+}
+
+/* -------------------------------------------------------------
+   OVERLAYS: START, GAME OVER, LEVEL CLEAR
+   ------------------------------------------------------------- */
+.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(4, 6, 15, 0.85);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+    z-index: 20;
+    text-align: center;
+    backdrop-filter: blur(4px);
+    transition: opacity 0.3s ease;
+}
+
+.overlay.hidden {
+    display: none !important;
+}
+
+.title-glow {
+    font-size: clamp(2rem, 6vw, 4.5rem);
+    font-weight: 900;
+    letter-spacing: 4px;
+    color: var(--cyber-blue);
+    text-shadow: 0 0 10px var(--cyber-blue), 0 0 20px var(--cyber-blue), 0 0 40px #0088cc;
+    margin-bottom: 8px;
+}
+
+.subtitle {
+    font-size: clamp(0.9rem, 2vw, 1.4rem);
+    color: var(--neo-yellow);
+    letter-spacing: 2px;
+    margin-bottom: 24px;
+}
+
+.instructions {
+    background: rgba(26, 34, 56, 0.6);
+    border: 1px solid var(--cyber-blue);
+    border-radius: 6px;
+    padding: 14px 24px;
+    font-size: clamp(0.75rem, 1.5vw, 0.95rem);
+    line-height: 1.6;
+    max-width: 500px;
+    margin-bottom: 24px;
+    color: #d1dcfa;
+}
+
+.blink {
+    animation: blinkAnim 1s infinite;
+}
+
+@keyframes blinkAnim {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0.2; }
+}
+
+.btn-arcade {
+    padding: 12px 32px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    font-family: inherit;
+    text-transform: uppercase;
+    color: #fff;
+    background: linear-gradient(180deg, #ff007f 0%, #b30059 100%);
+    border: 2px solid #ff71ce;
+    border-radius: 4px;
+    cursor: pointer;
+    box-shadow: 0 0 15px rgba(255, 0, 127, 0.5);
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.btn-arcade:hover, .btn-arcade:active {
+    transform: scale(1.05);
+    box-shadow: 0 0 25px rgba(255, 0, 127, 0.8);
+}
+
+.btn-secondary {
+    background: linear-gradient(180deg, #1c2b48 0%, #0e1728 100%);
+    border-color: var(--cyber-blue);
+    margin-top: 10px;
+}
+
+/* -------------------------------------------------------------
+   CONTROLLI TOUCH (MOBILE D-PAD & PULSANTI A/B)
+   ------------------------------------------------------------- */
+#touch-controls {
+    position: absolute;
+    bottom: 12px;
+    left: 0;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 0 24px;
+    box-sizing: border-box;
+    pointer-events: none;
+    z-index: 30;
+}
+
+#touch-controls.hidden {
+    display: none;
+}
+
+.touch-cluster {
+    display: flex;
+    gap: 12px;
+    pointer-events: auto;
+}
+
+.touch-dpad {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.touch-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: rgba(22, 28, 48, 0.7);
+    border: 2px solid var(--cyber-blue);
+    color: #fff;
+    font-family: inherit;
+    font-weight: bold;
+    font-size: 1.1rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
+    touch-action: manipulation;
+    cursor: pointer;
+}
+
+.touch-btn:active, .touch-btn.active {
+    background: var(--cyber-blue);
+    color: #000;
+    box-shadow: 0 0 20px var(--cyber-blue);
+    transform: scale(0.92);
+}
+
+.touch-btn.btn-action-a {
+    border-color: var(--neo-yellow);
+    box-shadow: 0 0 10px rgba(255, 230, 0, 0.3);
+}
+
+.touch-btn.btn-action-a:active, .touch-btn.btn-action-a.active {
+    background: var(--neo-yellow);
+    color: #000;
+    box-shadow: 0 0 20px var(--neo-yellow);
+}
+
+.touch-btn.btn-action-b {
+    border-color: var(--hot-pink);
+    box-shadow: 0 0 10px rgba(255, 0, 127, 0.3);
+}
+
+.touch-btn.btn-action-b:active, .touch-btn.btn-action-b.active {
+    background: var(--hot-pink);
+    color: #fff;
+    box-shadow: 0 0 20px var(--hot-pink);
+}
+
+/* Avviso per dispositivi mobili tenuti in Portrait */
+#portrait-warning {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: #060810;
+    z-index: 999;
+    color: var(--neo-yellow);
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 20px;
+}
+
+#portrait-warning span {
+    font-size: 3rem;
+    margin-bottom: 12px;
+}
+
+@media screen and (orientation: portrait) and (max-width: 768px) {
+    #portrait-warning {
+        display: flex;
+    }
+}

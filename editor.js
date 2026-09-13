@@ -1,0 +1,553 @@
+/**
+ * TURCLON - Level Lab Editor Logic
+ * Editor visuale di livelli con drag-to-paint, zoom, esportazione e test diretto.
+ */
+
+import { TILE_TYPES, PALETTE } from './js/config.js';
+import { LEVEL_1 } from './js/levels.js';
+
+// Definizione palette elementi selezionabili
+const PALETTE_DEFINITIONS = [
+    { type: TILE_TYPES.SOLID, name: 'Blocco Solido', desc: 'Metallo corazzato invalicabile', color: '#2a354b', letter: '■' },
+    { type: TILE_TYPES.PLATFORM, name: 'Piattaforma', desc: 'Passabile dal basso, calpestabile', color: '#5d729a', letter: '═' },
+    { type: TILE_TYPES.HAZARD, name: 'Spuntoni / Laser', desc: 'Pericolo letale al contatto', color: PALETTE.DANGER_RED, letter: '▲' },
+    { type: TILE_TYPES.CRATE, name: 'Cassa Cyber', desc: 'Distruggibile con i colpi al plasma', color: '#a65b1c', letter: '☒' },
+    { type: TILE_TYPES.SPAWN, name: 'Spawn Giocatore', desc: 'Punto di partenza (unico)', color: PALETTE.CYBER_BLUE, letter: 'P' },
+    { type: TILE_TYPES.ENEMY, name: 'Nemico Drone', desc: 'Pattugliatore deambulatore', color: PALETTE.HOT_PINK, letter: 'E' },
+    { type: TILE_TYPES.GOAL, name: 'Traguardo Portale', desc: 'Fine livello (unico)', color: PALETTE.NEO_YELLOW, letter: 'G' },
+    { type: TILE_TYPES.ENERGY, name: 'Ricarica Energia', desc: 'Capsula +2 punti vita', color: PALETTE.NEON_GREEN, letter: '+' },
+    { type: TILE_TYPES.EMPTY, name: 'Gomma / Vuoto', desc: 'Rimuove l\'elemento', color: '#121829', letter: '⌧' }
+];
+
+class LevelEditor {
+    constructor() {
+        this.canvas = document.getElementById('editor-canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.ctx.imageSmoothingEnabled = false;
+
+        // Dimensioni griglia
+        this.cols = 100;
+        this.rows = 14;
+        this.baseTileSize = 16;
+        this.zoom = 2; // Moltiplicatore pixel visivi (es. 16px -> 32px)
+        this.tileSize = this.baseTileSize * this.zoom;
+
+        // Matrice dati livello
+        this.map = [];
+
+        // Stato strumento selezionato
+        this.selectedType = TILE_TYPES.SOLID;
+        this.isPainting = false;
+        this.paintButton = 0; // 0 = sinistro (dipinge), 2 = destro (cancella)
+
+        // Cursore mouse
+        this.hoverCol = -1;
+        this.hoverRow = -1;
+
+        this.init();
+    }
+
+    init() {
+        this.loadInitialLevel();
+        this.renderPaletteUI();
+        this.setupEventListeners();
+        this.resizeCanvas();
+        this.draw();
+    }
+
+    /**
+     * Carica il livello iniziale (se c'è in localStorage carica quello, altrimenti il default Level 1)
+     */
+    loadInitialLevel() {
+        const saved = localStorage.getItem('turclon_custom_level');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                this.cols = parsed.width;
+                this.rows = parsed.height;
+                this.map = JSON.parse(JSON.stringify(parsed.data));
+                document.getElementById('input-width').value = this.cols;
+                document.getElementById('input-height').value = this.rows;
+                return;
+            } catch (e) {
+                console.warn('Impossibile caricare da localStorage, uso default:', e);
+            }
+        }
+
+        // Carica Level 1 di fabbrica
+        this.cols = LEVEL_1.width;
+        this.rows = LEVEL_1.height;
+        this.map = JSON.parse(JSON.stringify(LEVEL_1.data));
+        document.getElementById('input-width').value = this.cols;
+        document.getElementById('input-height').value = this.rows;
+    }
+
+    /**
+     * Genera dinamicamente la palette laterale con i pulsanti e anteprime
+     */
+    renderPaletteUI() {
+        const container = document.getElementById('palette-container');
+        container.innerHTML = '';
+
+        PALETTE_DEFINITIONS.forEach((item) => {
+            const el = document.createElement('div');
+            el.className = `palette-item ${item.type === this.selectedType ? 'active' : ''}`;
+            el.dataset.type = item.type;
+
+            el.innerHTML = `
+                <div class="palette-preview" style="background: ${item.color}; color: #fff;">
+                    ${item.letter}
+                </div>
+                <div class="palette-info">
+                    <span class="palette-name">${item.name}</span>
+                    <span class="palette-desc">${item.desc}</span>
+                </div>
+            `;
+
+            el.addEventListener('click', () => {
+                document.querySelectorAll('.palette-item').forEach(p => p.classList.remove('active'));
+                el.classList.add('active');
+                this.selectedType = item.type;
+                this.updateStatusBar();
+            });
+
+            container.appendChild(el);
+        });
+    }
+
+    /**
+     * Ridimensiona il canvas in base a zoom e dimensioni del livello
+     */
+    resizeCanvas() {
+        this.tileSize = this.baseTileSize * this.zoom;
+        this.canvas.width = this.cols * this.tileSize;
+        this.canvas.height = this.rows * this.tileSize;
+        this.draw();
+    }
+
+    /**
+     * Registra gli ascoltatori eventi (mouse, pulsanti, zoom, modale)
+     */
+    setupEventListeners() {
+        // Disabilita menu contestuale del tasto destro sul canvas per permettere la cancellazione
+        this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        this.canvas.addEventListener('mousedown', (e) => {
+            this.isPainting = true;
+            this.paintButton = e.button;
+            this.applyPaintAtEvent(e);
+        });
+
+        window.addEventListener('mouseup', () => {
+            this.isPainting = false;
+        });
+
+        this.canvas.addEventListener('mousemove', (e) => {
+            const rect = this.canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            this.hoverCol = Math.floor(mouseX / this.tileSize);
+            this.hoverRow = Math.floor(mouseY / this.tileSize);
+
+            this.updateStatusBar();
+
+            if (this.isPainting) {
+                this.applyPaintAtEvent(e);
+            }
+            this.draw();
+        });
+
+        this.canvas.addEventListener('mouseleave', () => {
+            this.hoverCol = -1;
+            this.hoverRow = -1;
+            this.draw();
+        });
+
+        // Ridimensiona griglia
+        document.getElementById('btn-resize').addEventListener('click', () => {
+            const newW = parseInt(document.getElementById('input-width').value, 10);
+            const newH = parseInt(document.getElementById('input-height').value, 10);
+            if (newW >= 10 && newH >= 8) {
+                this.resizeLevel(newW, newH);
+            }
+        });
+
+        // Zoom In / Out
+        document.getElementById('btn-zoom-in').addEventListener('click', () => {
+            if (this.zoom < 4) {
+                this.zoom += 1;
+                document.getElementById('zoom-level').textContent = `${this.zoom}x`;
+                this.resizeCanvas();
+            }
+        });
+
+        document.getElementById('btn-zoom-out').addEventListener('click', () => {
+            if (this.zoom > 1) {
+                this.zoom -= 1;
+                document.getElementById('zoom-level').textContent = `${this.zoom}x`;
+                this.resizeCanvas();
+            }
+        });
+
+        // Pulisci
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            if (confirm('Sei sicuro di voler svuotare completamente la griglia?')) {
+                this.map = Array.from({ length: this.rows }, () => Array(this.cols).fill(TILE_TYPES.EMPTY));
+                this.draw();
+            }
+        });
+
+        // Carica Livello 1 Default
+        document.getElementById('btn-load-default').addEventListener('click', () => {
+            if (confirm('Vuoi ricaricare il Settore 01 originale? Eventuali modifiche non esportate verranno sovrascritte.')) {
+                this.cols = LEVEL_1.width;
+                this.rows = LEVEL_1.height;
+                document.getElementById('input-width').value = this.cols;
+                document.getElementById('input-height').value = this.rows;
+                this.map = JSON.parse(JSON.stringify(LEVEL_1.data));
+                this.resizeCanvas();
+            }
+        });
+
+        // Esporta JSON
+        document.getElementById('btn-export').addEventListener('click', () => {
+            this.openExportModal();
+        });
+
+        // Importa JSON
+        document.getElementById('btn-import').addEventListener('click', () => {
+            this.openImportModal();
+        });
+
+        // GIOCA SUBITO
+        document.getElementById('btn-play-test').addEventListener('click', () => {
+            this.saveAndPlay();
+        });
+
+        // Modale: Chiudi
+        document.getElementById('modal-close-btn').addEventListener('click', () => {
+            document.getElementById('json-modal').classList.add('hidden');
+        });
+
+        // Modale: Copia
+        document.getElementById('btn-copy-json').addEventListener('click', () => {
+            const textarea = document.getElementById('json-output');
+            navigator.clipboard.writeText(textarea.value).then(() => {
+                const btn = document.getElementById('btn-copy-json');
+                const prev = btn.textContent;
+                btn.textContent = '✓ Copiato!';
+                btn.style.color = PALETTE.NEON_GREEN;
+                setTimeout(() => {
+                    btn.textContent = prev;
+                    btn.style.color = '';
+                }, 1500);
+            });
+        });
+
+        // Modale: Scarica File
+        document.getElementById('btn-download-json').addEventListener('click', () => {
+            const content = document.getElementById('json-output').value;
+            const blob = new Blob([content], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'turclon_custom_level.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        // Modale: Applica Import
+        document.getElementById('btn-apply-import').addEventListener('click', () => {
+            const content = document.getElementById('json-output').value;
+            try {
+                const parsed = JSON.parse(content);
+                if (parsed.data && Array.isArray(parsed.data)) {
+                    this.cols = parsed.width || parsed.data[0].length;
+                    this.rows = parsed.height || parsed.data.length;
+                    this.map = parsed.data;
+                    document.getElementById('input-width').value = this.cols;
+                    document.getElementById('input-height').value = this.rows;
+                    this.resizeCanvas();
+                    document.getElementById('json-modal').classList.add('hidden');
+                } else {
+                    alert('Formato JSON non valido: deve contenere una proprietà "data" con array 2D.');
+                }
+            } catch (err) {
+                alert('Errore di parsing del JSON: ' + err.message);
+            }
+        });
+    }
+
+    /**
+     * Dipingi o cancella nella posizione del mouse
+     */
+    applyPaintAtEvent(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const col = Math.floor((e.clientX - rect.left) / this.tileSize);
+        const row = Math.floor((e.clientY - rect.top) / this.tileSize);
+
+        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return;
+
+        // Se tasto destro (button 2) cancella con EMPTY
+        const typeToSet = (this.paintButton === 2) ? TILE_TYPES.EMPTY : this.selectedType;
+
+        // Regola di unicità per Spawn e Goal (possono esisterne solo 1 nel livello)
+        if (typeToSet === TILE_TYPES.SPAWN || typeToSet === TILE_TYPES.GOAL) {
+            for (let r = 0; r < this.rows; r++) {
+                for (let c = 0; c < this.cols; c++) {
+                    if (this.map[r][c] === typeToSet) {
+                        this.map[r][c] = TILE_TYPES.EMPTY;
+                    }
+                }
+            }
+        }
+
+        this.map[row][col] = typeToSet;
+        this.draw();
+    }
+
+    /**
+     * Ridimensiona la matrice preservando i blocchi esistenti
+     */
+    resizeLevel(newW, newH) {
+        const newMap = Array.from({ length: newH }, () => Array(newW).fill(TILE_TYPES.EMPTY));
+        for (let r = 0; r < Math.min(this.rows, newH); r++) {
+            for (let c = 0; c < Math.min(this.cols, newW); c++) {
+                newMap[r][c] = this.map[r][c];
+            }
+        }
+        this.cols = newW;
+        this.rows = newH;
+        this.map = newMap;
+        this.resizeCanvas();
+    }
+
+    /**
+     * Salva il livello in localStorage e apre il gioco in una nuova scheda
+     */
+    saveAndPlay() {
+        const exportObj = {
+            name: "CUSTOM LEVEL",
+            width: this.cols,
+            height: this.rows,
+            data: this.map
+        };
+
+        localStorage.setItem('turclon_custom_level', JSON.stringify(exportObj));
+        window.open('index.html?custom=true', '_blank');
+    }
+
+    openExportModal() {
+        const exportObj = {
+            name: "CUSTOM SECTOR",
+            width: this.cols,
+            height: this.rows,
+            data: this.map
+        };
+
+        document.getElementById('modal-title').textContent = 'Esportazione Livello (JSON)';
+        document.getElementById('json-output').value = JSON.stringify(exportObj, null, 2);
+        document.getElementById('json-output').readOnly = true;
+        document.getElementById('btn-copy-json').classList.remove('hidden');
+        document.getElementById('btn-download-json').classList.remove('hidden');
+        document.getElementById('btn-apply-import').classList.add('hidden');
+        document.getElementById('json-modal').classList.remove('hidden');
+    }
+
+    openImportModal() {
+        document.getElementById('modal-title').textContent = 'Importazione Livello (Incolla JSON)';
+        document.getElementById('json-output').value = '';
+        document.getElementById('json-output').readOnly = false;
+        document.getElementById('btn-copy-json').classList.add('hidden');
+        document.getElementById('btn-download-json').classList.add('hidden');
+        document.getElementById('btn-apply-import').classList.remove('hidden');
+        document.getElementById('json-modal').classList.remove('hidden');
+    }
+
+    updateStatusBar() {
+        const status = document.getElementById('statusbar');
+        const cur = PALETTE_DEFINITIONS.find(p => p.type === this.selectedType);
+        const colStr = this.hoverCol >= 0 ? this.hoverCol : '-';
+        const rowStr = this.hoverRow >= 0 ? this.hoverRow : '-';
+        status.textContent = `Col: ${colStr}, Riga: ${rowStr} | Strumento attivo: ${cur ? cur.name : 'N/A'}`;
+    }
+
+    /**
+     * Disegna l'intera griglia dell'editor con estetica 16-bit
+     */
+    draw() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // 1. Disegna i blocchi
+        for (let r = 0; r < this.rows; r++) {
+            for (let c = 0; c < this.cols; c++) {
+                const type = this.map[r][c];
+                const x = c * this.tileSize;
+                const y = r * this.tileSize;
+
+                this.drawTile(type, x, y);
+            }
+        }
+
+        // 2. Disegna linee della griglia
+        this.ctx.strokeStyle = '#18243c';
+        this.ctx.lineWidth = 1;
+
+        // Linee verticali
+        for (let c = 0; c <= this.cols; c++) {
+            const x = c * this.tileSize;
+            this.ctx.beginPath();
+            this.ctx.moveTo(x, 0);
+            this.ctx.lineTo(x, this.canvas.height);
+            // Evidenzia ogni 10 colonne con un colore più visibile
+            if (c % 10 === 0) {
+                this.ctx.strokeStyle = '#2b3f66';
+                this.ctx.stroke();
+                this.ctx.strokeStyle = '#18243c';
+            } else {
+                this.ctx.stroke();
+            }
+        }
+
+        // Linee orizzontali
+        for (let r = 0; r <= this.rows; r++) {
+            const y = r * this.tileSize;
+            this.ctx.beginPath();
+            this.ctx.moveTo(0, y);
+            this.ctx.lineTo(this.canvas.width, y);
+            this.ctx.stroke();
+        }
+
+        // 3. Numerazione colonne in alto per orientamento
+        this.ctx.fillStyle = '#657ea8';
+        this.ctx.font = `${Math.max(9, this.tileSize * 0.35)}px monospace`;
+        this.ctx.textAlign = 'center';
+        for (let c = 0; c < this.cols; c += 5) {
+            this.ctx.fillText(`${c}`, c * this.tileSize + this.tileSize * 0.5, 11);
+        }
+
+        // 4. Evidenziazione tile sotto il cursore (Hover cursor)
+        if (this.hoverCol >= 0 && this.hoverCol < this.cols && this.hoverRow >= 0 && this.hoverRow < this.rows) {
+            const hx = this.hoverCol * this.tileSize;
+            const hy = this.hoverRow * this.tileSize;
+
+            this.ctx.strokeStyle = PALETTE.CYBER_BLUE;
+            this.ctx.lineWidth = 2;
+            this.ctx.strokeRect(hx + 1, hy + 1, this.tileSize - 2, this.tileSize - 2);
+        }
+    }
+
+    /**
+     * Disegna il singolo blocco ingrandito per l'editor
+     */
+    drawTile(type, x, y) {
+        const s = this.tileSize;
+
+        switch (type) {
+            case TILE_TYPES.EMPTY:
+                // Sfondo vuoto
+                this.ctx.fillStyle = '#080c16';
+                this.ctx.fillRect(x, y, s, s);
+                break;
+
+            case TILE_TYPES.SOLID:
+                this.ctx.fillStyle = PALETTE.STEEL_GRAY;
+                this.ctx.fillRect(x, y, s, s);
+                this.ctx.fillStyle = PALETTE.STEEL_LIGHT;
+                this.ctx.fillRect(x, y, s, 2 * this.zoom);
+                this.ctx.fillRect(x, y, 2 * this.zoom, s);
+                this.ctx.fillStyle = PALETTE.DARK_NAVY;
+                this.ctx.fillRect(x, y + s - 2 * this.zoom, s, 2 * this.zoom);
+                this.ctx.fillRect(x + s - 2 * this.zoom, y, 2 * this.zoom, s);
+                // Rivetti
+                this.ctx.fillStyle = PALETTE.STEEL_HIGHLIGHT;
+                this.ctx.fillRect(x + 2 * this.zoom, y + 2 * this.zoom, 2 * this.zoom, 2 * this.zoom);
+                this.ctx.fillRect(x + s - 4 * this.zoom, y + 2 * this.zoom, 2 * this.zoom, 2 * this.zoom);
+                break;
+
+            case TILE_TYPES.PLATFORM:
+                this.ctx.fillStyle = '#080c16';
+                this.ctx.fillRect(x, y, s, s);
+                this.ctx.fillStyle = PALETTE.STEEL_LIGHT;
+                this.ctx.fillRect(x, y, s, 4 * this.zoom);
+                this.ctx.fillStyle = PALETTE.CYBER_BLUE;
+                this.ctx.fillRect(x, y, s, 1 * this.zoom);
+                break;
+
+            case TILE_TYPES.HAZARD:
+                this.ctx.fillStyle = '#080c16';
+                this.ctx.fillRect(x, y, s, s);
+                this.ctx.fillStyle = PALETTE.DANGER_RED;
+                for (let i = 0; i < 3; i++) {
+                    const sx = x + i * (s / 3);
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(sx, y + s);
+                    this.ctx.lineTo(sx + s / 6, y + 4 * this.zoom);
+                    this.ctx.lineTo(sx + s / 3, y + s);
+                    this.ctx.fill();
+                }
+                break;
+
+            case TILE_TYPES.CRATE:
+                this.ctx.fillStyle = '#a65b1c';
+                this.ctx.fillRect(x, y, s, s);
+                this.ctx.strokeStyle = '#6e380a';
+                this.ctx.lineWidth = 2 * this.zoom;
+                this.ctx.beginPath();
+                this.ctx.moveTo(x + 2, y + 2);
+                this.ctx.lineTo(x + s - 2, y + s - 2);
+                this.ctx.moveTo(x + s - 2, y + 2);
+                this.ctx.lineTo(x + 2, y + s - 2);
+                this.ctx.stroke();
+                break;
+
+            case TILE_TYPES.SPAWN:
+                this.ctx.fillStyle = '#080c16';
+                this.ctx.fillRect(x, y, s, s);
+                this.ctx.fillStyle = PALETTE.CYBER_BLUE;
+                this.ctx.fillRect(x + 2 * this.zoom, y + s - 4 * this.zoom, s - 4 * this.zoom, 4 * this.zoom);
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.font = `bold ${Math.round(s * 0.55)}px monospace`;
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText('P', x + s * 0.5, y + s * 0.65);
+                break;
+
+            case TILE_TYPES.ENEMY:
+                this.ctx.fillStyle = 'rgba(255, 23, 68, 0.2)';
+                this.ctx.fillRect(x, y, s, s);
+                this.ctx.fillStyle = PALETTE.DANGER_RED;
+                this.ctx.font = `bold ${Math.round(s * 0.55)}px monospace`;
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText('E', x + s * 0.5, y + s * 0.65);
+                break;
+
+            case TILE_TYPES.GOAL:
+                this.ctx.fillStyle = 'rgba(255, 230, 0, 0.25)';
+                this.ctx.fillRect(x, y, s, s);
+                this.ctx.strokeStyle = PALETTE.NEO_YELLOW;
+                this.ctx.lineWidth = 2 * this.zoom;
+                this.ctx.strokeRect(x + 2 * this.zoom, y + 2 * this.zoom, s - 4 * this.zoom, s - 4 * this.zoom);
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.font = `bold ${Math.round(s * 0.55)}px monospace`;
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText('G', x + s * 0.5, y + s * 0.65);
+                break;
+
+            case TILE_TYPES.ENERGY:
+                this.ctx.fillStyle = '#080c16';
+                this.ctx.fillRect(x, y, s, s);
+                this.ctx.fillStyle = PALETTE.NEON_GREEN;
+                this.ctx.fillRect(x + 4 * this.zoom, y + 4 * this.zoom, 8 * this.zoom, 8 * this.zoom);
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.fillRect(x + 7 * this.zoom, y + 5 * this.zoom, 2 * this.zoom, 6 * this.zoom);
+                this.ctx.fillRect(x + 5 * this.zoom, y + 7 * this.zoom, 6 * this.zoom, 2 * this.zoom);
+                break;
+        }
+    }
+}
+
+// Avvio dell'Editor all'apertura della pagina
+window.addEventListener('DOMContentLoaded', () => {
+    window.editorInstance = new LevelEditor();
+});
