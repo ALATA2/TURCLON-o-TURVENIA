@@ -1,41 +1,66 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TURCLON - Level Lab (Editor di Livelli 16-Bit)</title>
+    <title>TURCLON - Level Lab (16-Bit Level Editor)</title>
+    <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="editor.css">
 </head>
 <body>
 
+    <!-- SECURITY CLEARANCE GATE (RICHIESTA PASSWORD IDSPISPOPD) -->
+    <div id="security-gate">
+        <div class="terminal-box">
+            <img src="assets/logo_cropped.png" alt="TURCLON" class="title-logo" style="max-width: 280px; margin-bottom: 4px;">
+            <h2 id="gate-title" class="terminal-title">SECURITY CLEARANCE REQUIRED</h2>
+            <p id="gate-sub" class="terminal-sub">RESTRICTED NEO-GEO SYSTEM // ENTER ACCESS CODE</p>
+
+            <form class="gate-form" onsubmit="return false;">
+                <input type="password" id="gate-password" class="gate-input" placeholder="ACCESS CODE" autocomplete="off" autofocus>
+                <button type="submit" id="gate-submit" class="btn-arcade">AUTHENTICATE</button>
+                <div id="gate-error" class="gate-error-msg"></div>
+            </form>
+        </div>
+    </div>
+
     <!-- TOOLBAR SUPERIORE -->
     <header>
         <div class="logo-area">
-            <span class="logo-title">TURCLON</span>
-            <span class="tagline">LEVEL LAB</span>
+            <a href="index.html" title="Back to Game" style="display: flex; align-items: center; text-decoration: none;">
+                <img src="assets/logo_cropped.png" alt="TURCLON" style="height: 32px; width: auto; image-rendering: pixelated; margin-right: 8px;">
+            </a>
+            <span id="ed-tagline" class="tagline">LEVEL LAB</span>
         </div>
 
         <div class="header-tools">
-            <div class="tool-group">
-                <label for="input-width">Larghezza:</label>
-                <input type="number" id="input-width" min="20" max="300" value="100">
-                <label for="input-height">Altezza:</label>
-                <input type="number" id="input-height" min="10" max="40" value="14">
-                <button id="btn-resize" class="btn-editor">Applica</button>
+            <!-- Selettore Lingua nella Toolbar -->
+            <div class="lang-selector-inline">
+                <button class="lang-btn active" data-lang="en">EN</button>
+                <button class="lang-btn" data-lang="it">IT</button>
+                <button class="lang-btn" data-lang="ja">JA</button>
             </div>
 
             <div class="tool-group">
-                <label>Zoom:</label>
+                <label id="lbl-width" for="input-width">Width:</label>
+                <input type="number" id="input-width" min="20" max="300" value="100">
+                <label id="lbl-height" for="input-height">Height:</label>
+                <input type="number" id="input-height" min="10" max="40" value="14">
+                <button id="btn-resize" class="btn-editor">Apply</button>
+            </div>
+
+            <div class="tool-group">
+                <label id="lbl-zoom">Zoom:</label>
                 <button id="btn-zoom-out" class="btn-editor">−</button>
                 <span id="zoom-level">2x</span>
                 <button id="btn-zoom-in" class="btn-editor">+</button>
             </div>
 
-            <button id="btn-clear" class="btn-editor" title="Svuota l'intera griglia">Pulisci</button>
-            <button id="btn-load-default" class="btn-editor" title="Carica il Livello 1 originale">Carica Livello 1</button>
-            <button id="btn-export" class="btn-editor">Esporta JSON</button>
-            <button id="btn-import" class="btn-editor">Importa JSON</button>
-            <button id="btn-play-test" class="btn-editor btn-play">▶ GIOCA SUBITO!</button>
+            <button id="btn-clear" class="btn-editor">Clear</button>
+            <button id="btn-load-default" class="btn-editor">Load Sector 1</button>
+            <button id="btn-export" class="btn-editor">Export JSON</button>
+            <button id="btn-import" class="btn-editor">Import JSON</button>
+            <button id="btn-play-test" class="btn-editor btn-play">▶ PLAY NOW!</button>
         </div>
     </header>
 
@@ -43,24 +68,24 @@
     <div class="main-content">
         <!-- SIDEBAR PALETTE -->
         <aside class="sidebar">
-            <h3>Palette Elementi</h3>
+            <h3 id="palette-heading">ELEMENT PALETTE</h3>
 
             <div class="palette-grid" id="palette-container">
                 <!-- Verrà popolato dinamicamente da editor.js con i tipi di tile -->
             </div>
 
             <div class="editor-tips">
-                <p><strong>GUIDA VELOCE:</strong></p>
-                <p>• <strong>Click / Trascina Sx:</strong> Dipingi elemento</p>
-                <p>• <strong>Tasto Destro:</strong> Cancella blocco</p>
-                <p>• <strong>Shift + Rotellina:</strong> Scorrimento orizzontale</p>
+                <p><strong id="tips-header">QUICK GUIDE:</strong></p>
+                <p id="tips-paint">• <strong>Left Click/Drag:</strong> Paint tile</p>
+                <p id="tips-erase">• <strong>Right Click:</strong> Erase tile</p>
+                <p id="tips-scroll">• <strong>Shift + Wheel:</strong> Horizontal scroll</p>
             </div>
         </aside>
 
         <!-- VIEWPORT CENTRALE CON CANVAS SCORREVOLE -->
         <main class="canvas-viewport" id="viewport">
             <canvas id="editor-canvas"></canvas>
-            <div class="statusbar" id="statusbar">Col: 0, Riga: 0 | Tile: Solido (1)</div>
+            <div class="statusbar" id="statusbar">Col: 0, Row: 0 | Active Tool: Solid Block (1)</div>
         </main>
     </div>
 
@@ -68,14 +93,14 @@
     <div id="json-modal" class="modal-overlay hidden">
         <div class="modal-box">
             <div class="modal-header">
-                <h2 id="modal-title">Esportazione Livello JSON</h2>
+                <h2 id="modal-title">Level Export (JSON)</h2>
                 <button id="modal-close-btn" class="modal-close">&times;</button>
             </div>
             <textarea id="json-output" class="json-textarea" spellcheck="false"></textarea>
             <div class="modal-footer">
-                <button id="btn-copy-json" class="btn-editor">Copia negli Appunti</button>
-                <button id="btn-download-json" class="btn-editor">Scarica File .json</button>
-                <button id="btn-apply-import" class="btn-editor btn-play hidden">Carica nel Canvas</button>
+                <button id="btn-copy-json" class="btn-editor">Copy to Clipboard</button>
+                <button id="btn-download-json" class="btn-editor">Download .json File</button>
+                <button id="btn-apply-import" class="btn-editor btn-play hidden">Load into Canvas</button>
             </div>
         </div>
     </div>

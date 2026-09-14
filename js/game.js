@@ -11,6 +11,8 @@ import { ParallaxBackground } from './parallax.js';
 import { Tilemap } from './tilemap.js';
 import { Player, Enemy, Goal } from './entities.js';
 import { LEVEL_1 } from './levels.js';
+import { i18n } from './i18n.js';
+import { AuthGate } from './auth.js';
 
 class Game {
     constructor() {
@@ -43,7 +45,73 @@ class Game {
         // Gestione temporale per delta time fisso/fluido
         this.lastTime = performance.now();
 
+        // Inizializzazione Security Clearance Gate e Lingua
+        this.authGate = new AuthGate(() => {
+            console.log("Accesso autorizzato // Sistema TURCLON attivo");
+        });
+
+        this.initI18n();
         this.init();
+    }
+
+    /**
+     * Configura il selettore di lingua e l'aggiornamento dinamico dell'interfaccia
+     */
+    initI18n() {
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const lang = btn.dataset.lang;
+                i18n.setLanguage(lang);
+                this.updateLanguageUI();
+            });
+        });
+
+        i18n.onLanguageChange(() => this.updateLanguageUI());
+        this.updateLanguageUI();
+    }
+
+    updateLanguageUI() {
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.lang === i18n.currentLang);
+        });
+
+        const setTxt = (id, key) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = i18n.get(key);
+        };
+        const setHtml = (id, key) => {
+            const el = document.getElementById(id);
+            if (el) el.innerHTML = i18n.get(key);
+        };
+
+        setTxt('gate-title', 'pwdTitle');
+        setTxt('gate-sub', 'pwdSubtitle');
+        const pwdInput = document.getElementById('gate-password');
+        if (pwdInput) pwdInput.placeholder = i18n.get('pwdPlaceholder');
+        setTxt('gate-submit', 'pwdSubmit');
+
+        setTxt('start-subtitle', 'gameSubtitle');
+        setHtml('ctrl-desktop-header', 'controlsDesktopHeader');
+        setHtml('ctrl-move', 'controlsMove');
+        setHtml('ctrl-action', 'controlsAction');
+        setHtml('ctrl-drop', 'controlsDrop');
+        setHtml('ctrl-mobile-header', 'controlsMobileHeader');
+        setTxt('ctrl-mobile-desc', 'controlsMobileDesc');
+        setTxt('btn-start', 'btnStart');
+        setTxt('btn-open-editor', 'btnEditor');
+
+        setTxt('game-over-title', 'gameOverTitle');
+        setTxt('game-over-subtitle', 'gameOverSubtitle');
+        setTxt('btn-retry', 'btnRetry');
+
+        setTxt('victory-title', 'victoryTitle');
+        setTxt('victory-desc', 'victoryDesc');
+        setTxt('btn-play-again', 'btnPlayAgain');
+        setTxt('btn-create-level', 'btnCreateLevel');
+
+        setTxt('rotate-title', 'rotateTitle');
+        setTxt('rotate-desc', 'rotateDesc');
     }
 
     init() {
@@ -70,6 +138,12 @@ class Game {
 
         // Gestione avvio al primo click / tap (sblocco AudioContext)
         const startTrigger = () => {
+            // Blocca se l'overlay di password è ancora attivo
+            const gate = document.getElementById('security-gate');
+            if (gate && !gate.classList.contains('hidden')) {
+                return;
+            }
+
             if (this.state === 'START') {
                 audio.init();
                 this.state = 'PLAYING';
@@ -82,6 +156,10 @@ class Game {
         };
 
         window.addEventListener('keydown', (e) => {
+            // Ignora se l'utente sta digitando nella password
+            const gate = document.getElementById('security-gate');
+            if (gate && !gate.classList.contains('hidden')) return;
+
             if (e.code === 'Space' || e.code === 'KeyX' || e.code === 'Enter') {
                 startTrigger();
             }
@@ -276,7 +354,7 @@ class Game {
                     this.stateTimer = 0;
                     audio.playGoal();
                     this.particles.emitExplosion(this.player.x + 8, this.player.y + 10, 35);
-                    document.getElementById('victory-score').textContent = `SCORE: ${this.player.score}`;
+                    document.getElementById('victory-score').textContent = `${i18n.get('hudScore')}${this.player.score}`;
                     document.getElementById('victory-overlay').classList.remove('hidden');
                 }
             }
@@ -373,7 +451,7 @@ class Game {
     }
 
     /**
-     * Disegna l'HUD arcade Neo-Geo (Health bar segmentata, Vite, Punti, Settore)
+     * Disegna l'HUD arcade Neo-Geo (Health bar segmentata, Vite, Punti)
      */
     drawHUD() {
         this.ctx.save();
@@ -388,10 +466,13 @@ class Game {
         this.ctx.fillStyle = '#ffffff';
         this.ctx.font = 'bold 8px monospace';
         this.ctx.textAlign = 'left';
-        this.ctx.fillText('LIFE:', 6, 10);
+        const lifeLabel = i18n.get('hudLife');
+        this.ctx.fillText(lifeLabel, 6, 10);
+
+        const lifeOffset = 6 + this.ctx.measureText(lifeLabel).width + 3;
 
         for (let i = 0; i < this.player.maxHp; i++) {
-            const bx = 34 + i * 8;
+            const bx = lifeOffset + i * 8;
             if (i < this.player.hp) {
                 this.ctx.fillStyle = (this.player.hp <= 1) ? PALETTE.DANGER_RED : (this.player.hp <= 2 ? PALETTE.NEO_YELLOW : PALETTE.CYBER_BLUE);
             } else {
@@ -402,13 +483,13 @@ class Game {
 
         // VITE (LIVES)
         this.ctx.fillStyle = PALETTE.NEO_YELLOW;
-        this.ctx.fillText(`LIVES:${this.player.lives}`, 84, 10);
+        this.ctx.fillText(`${i18n.get('hudLives')} ${this.player.lives}`, lifeOffset + this.player.maxHp * 8 + 12, 10);
 
         // PUNTEGGIO (SCORE)
         const scoreStr = String(this.player.score).padStart(6, '0');
         this.ctx.fillStyle = '#ffffff';
         this.ctx.textAlign = 'right';
-        this.ctx.fillText(`SCORE: ${scoreStr}`, VIRTUAL_WIDTH - 6, 10);
+        this.ctx.fillText(`${i18n.get('hudScore')}${scoreStr}`, VIRTUAL_WIDTH - 6, 10);
 
         this.ctx.restore();
     }

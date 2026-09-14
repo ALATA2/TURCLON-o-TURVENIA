@@ -1,23 +1,27 @@
 /**
  * TURCLON - Level Lab Editor Logic
- * Editor visuale di livelli con drag-to-paint, zoom, esportazione e test diretto.
+ * Editor visuale di livelli con drag-to-paint, zoom, esportazione, autenticazione e i18n.
  */
 
 import { TILE_TYPES, PALETTE } from './js/config.js';
 import { LEVEL_1 } from './js/levels.js';
+import { i18n } from './js/i18n.js';
+import { AuthGate } from './js/auth.js';
 
-// Definizione palette elementi selezionabili
-const PALETTE_DEFINITIONS = [
-    { type: TILE_TYPES.SOLID, name: 'Blocco Solido', desc: 'Metallo corazzato invalicabile', color: '#2a354b', letter: '■' },
-    { type: TILE_TYPES.PLATFORM, name: 'Piattaforma', desc: 'Passabile dal basso, calpestabile', color: '#5d729a', letter: '═' },
-    { type: TILE_TYPES.HAZARD, name: 'Spuntoni / Laser', desc: 'Pericolo letale al contatto', color: PALETTE.DANGER_RED, letter: '▲' },
-    { type: TILE_TYPES.CRATE, name: 'Cassa Cyber', desc: 'Distruggibile con i colpi al plasma', color: '#a65b1c', letter: '☒' },
-    { type: TILE_TYPES.SPAWN, name: 'Spawn Giocatore', desc: 'Punto di partenza (unico)', color: PALETTE.CYBER_BLUE, letter: 'P' },
-    { type: TILE_TYPES.ENEMY, name: 'Nemico Drone', desc: 'Pattugliatore deambulatore', color: PALETTE.HOT_PINK, letter: 'E' },
-    { type: TILE_TYPES.GOAL, name: 'Traguardo Portale', desc: 'Fine livello (unico)', color: PALETTE.NEO_YELLOW, letter: 'G' },
-    { type: TILE_TYPES.ENERGY, name: 'Ricarica Energia', desc: 'Capsula +2 punti vita', color: PALETTE.NEON_GREEN, letter: '+' },
-    { type: TILE_TYPES.EMPTY, name: 'Gomma / Vuoto', desc: 'Rimuove l\'elemento', color: '#121829', letter: '⌧' }
-];
+// Ritorna le definizioni della palette con testi localizzati
+function getPaletteDefinitions() {
+    return [
+        { type: TILE_TYPES.SOLID, nameKey: 'tileSolidName', descKey: 'tileSolidDesc', color: '#2a354b', letter: '■' },
+        { type: TILE_TYPES.PLATFORM, nameKey: 'tilePlatformName', descKey: 'tilePlatformDesc', color: '#5d729a', letter: '═' },
+        { type: TILE_TYPES.HAZARD, nameKey: 'tileHazardName', descKey: 'tileHazardDesc', color: PALETTE.DANGER_RED, letter: '▲' },
+        { type: TILE_TYPES.CRATE, nameKey: 'tileCrateName', descKey: 'tileCrateDesc', color: '#a65b1c', letter: '☒' },
+        { type: TILE_TYPES.SPAWN, nameKey: 'tileSpawnName', descKey: 'tileSpawnDesc', color: PALETTE.CYBER_BLUE, letter: 'P' },
+        { type: TILE_TYPES.ENEMY, nameKey: 'tileEnemyName', descKey: 'tileEnemyDesc', color: PALETTE.HOT_PINK, letter: 'E' },
+        { type: TILE_TYPES.GOAL, nameKey: 'tileGoalName', descKey: 'tileGoalDesc', color: PALETTE.NEO_YELLOW, letter: 'G' },
+        { type: TILE_TYPES.ENERGY, nameKey: 'tileEnergyName', descKey: 'tileEnergyDesc', color: PALETTE.NEON_GREEN, letter: '+' },
+        { type: TILE_TYPES.EMPTY, nameKey: 'tileEmptyName', descKey: 'tileEmptyDesc', color: '#121829', letter: '⌧' }
+    ];
+}
 
 class LevelEditor {
     constructor() {
@@ -44,10 +48,16 @@ class LevelEditor {
         this.hoverCol = -1;
         this.hoverRow = -1;
 
+        // Security Clearance Gate
+        this.authGate = new AuthGate(() => {
+            console.log("Accesso autorizzato all'Editor // TURCLON Level Lab");
+        });
+
         this.init();
     }
 
     init() {
+        this.initI18n();
         this.loadInitialLevel();
         this.renderPaletteUI();
         this.setupEventListeners();
@@ -56,7 +66,77 @@ class LevelEditor {
     }
 
     /**
-     * Carica il livello iniziale (se c'è in localStorage carica quello, altrimenti il default Level 1)
+     * Configura il selettore lingue ed aggiorna l'interfaccia dell'editor
+     */
+    initI18n() {
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const lang = btn.dataset.lang;
+                i18n.setLanguage(lang);
+                this.updateLanguageUI();
+                this.renderPaletteUI();
+                this.updateStatusBar();
+            });
+        });
+
+        i18n.onLanguageChange(() => {
+            this.updateLanguageUI();
+            this.renderPaletteUI();
+            this.updateStatusBar();
+        });
+
+        this.updateLanguageUI();
+    }
+
+    updateLanguageUI() {
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.lang === i18n.currentLang);
+        });
+
+        const setTxt = (id, key) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = i18n.get(key);
+        };
+        const setHtml = (id, key) => {
+            const el = document.getElementById(id);
+            if (el) el.innerHTML = i18n.get(key);
+        };
+
+        // Gate
+        setTxt('gate-title', 'pwdTitle');
+        setTxt('gate-sub', 'pwdSubtitle');
+        const pwdInput = document.getElementById('gate-password');
+        if (pwdInput) pwdInput.placeholder = i18n.get('pwdPlaceholder');
+        setTxt('gate-submit', 'pwdSubmit');
+
+        // Header & Toolbars
+        setTxt('ed-tagline', 'edTitle');
+        setTxt('lbl-width', 'edWidth');
+        setTxt('lbl-height', 'edHeight');
+        setTxt('btn-resize', 'edApply');
+        setTxt('lbl-zoom', 'edZoom');
+        setTxt('btn-clear', 'edClear');
+        setTxt('btn-load-default', 'edLoadDefault');
+        setTxt('btn-export', 'edExport');
+        setTxt('btn-import', 'edImport');
+        setTxt('btn-play-test', 'edPlayNow');
+
+        // Sidebar & Tips
+        setTxt('palette-heading', 'edPaletteTitle');
+        setTxt('tips-header', 'edTipsHeader');
+        setHtml('tips-paint', 'edTipsPaint');
+        setHtml('tips-erase', 'edTipsErase');
+        setHtml('tips-scroll', 'edTipsScroll');
+
+        // Modal
+        setTxt('btn-copy-json', 'btnCopy');
+        setTxt('btn-download-json', 'btnDownload');
+        setTxt('btn-apply-import', 'btnApplyImport');
+    }
+
+    /**
+     * Carica il livello iniziale (se presente in localStorage o il predefinito)
      */
     loadInitialLevel() {
         const saved = localStorage.getItem('turclon_custom_level');
@@ -83,24 +163,29 @@ class LevelEditor {
     }
 
     /**
-     * Genera dinamicamente la palette laterale con i pulsanti e anteprime
+     * Genera dinamicamente la palette laterale con i testi localizzati
      */
     renderPaletteUI() {
         const container = document.getElementById('palette-container');
         container.innerHTML = '';
 
-        PALETTE_DEFINITIONS.forEach((item) => {
+        const defs = getPaletteDefinitions();
+
+        defs.forEach((item) => {
             const el = document.createElement('div');
             el.className = `palette-item ${item.type === this.selectedType ? 'active' : ''}`;
             el.dataset.type = item.type;
+
+            const name = i18n.get(item.nameKey);
+            const desc = i18n.get(item.descKey);
 
             el.innerHTML = `
                 <div class="palette-preview" style="background: ${item.color}; color: #fff;">
                     ${item.letter}
                 </div>
                 <div class="palette-info">
-                    <span class="palette-name">${item.name}</span>
-                    <span class="palette-desc">${item.desc}</span>
+                    <span class="palette-name">${name}</span>
+                    <span class="palette-desc">${desc}</span>
                 </div>
             `;
 
@@ -129,10 +214,13 @@ class LevelEditor {
      * Registra gli ascoltatori eventi (mouse, pulsanti, zoom, modale)
      */
     setupEventListeners() {
-        // Disabilita menu contestuale del tasto destro sul canvas per permettere la cancellazione
         this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
         this.canvas.addEventListener('mousedown', (e) => {
+            // Blocca se security gate attivo
+            const gate = document.getElementById('security-gate');
+            if (gate && !gate.classList.contains('hidden')) return;
+
             this.isPainting = true;
             this.paintButton = e.button;
             this.applyPaintAtEvent(e);
@@ -192,7 +280,7 @@ class LevelEditor {
 
         // Pulisci
         document.getElementById('btn-clear').addEventListener('click', () => {
-            if (confirm('Sei sicuro di voler svuotare completamente la griglia?')) {
+            if (confirm(i18n.get('confirmClear'))) {
                 this.map = Array.from({ length: this.rows }, () => Array(this.cols).fill(TILE_TYPES.EMPTY));
                 this.draw();
             }
@@ -200,7 +288,7 @@ class LevelEditor {
 
         // Carica Livello 1 Default
         document.getElementById('btn-load-default').addEventListener('click', () => {
-            if (confirm('Vuoi ricaricare il Settore 01 originale? Eventuali modifiche non esportate verranno sovrascritte.')) {
+            if (confirm(i18n.get('confirmLoadDefault'))) {
                 this.cols = LEVEL_1.width;
                 this.rows = LEVEL_1.height;
                 document.getElementById('input-width').value = this.cols;
@@ -236,7 +324,7 @@ class LevelEditor {
             navigator.clipboard.writeText(textarea.value).then(() => {
                 const btn = document.getElementById('btn-copy-json');
                 const prev = btn.textContent;
-                btn.textContent = '✓ Copiato!';
+                btn.textContent = i18n.get('btnCopied');
                 btn.style.color = PALETTE.NEON_GREEN;
                 setTimeout(() => {
                     btn.textContent = prev;
@@ -271,10 +359,10 @@ class LevelEditor {
                     this.resizeCanvas();
                     document.getElementById('json-modal').classList.add('hidden');
                 } else {
-                    alert('Formato JSON non valido: deve contenere una proprietà "data" con array 2D.');
+                    alert(i18n.get('invalidJson'));
                 }
             } catch (err) {
-                alert('Errore di parsing del JSON: ' + err.message);
+                alert(i18n.get('parseError') + err.message);
             }
         });
     }
@@ -346,7 +434,7 @@ class LevelEditor {
             data: this.map
         };
 
-        document.getElementById('modal-title').textContent = 'Esportazione Livello (JSON)';
+        document.getElementById('modal-title').textContent = i18n.get('modalExportTitle');
         document.getElementById('json-output').value = JSON.stringify(exportObj, null, 2);
         document.getElementById('json-output').readOnly = true;
         document.getElementById('btn-copy-json').classList.remove('hidden');
@@ -356,7 +444,7 @@ class LevelEditor {
     }
 
     openImportModal() {
-        document.getElementById('modal-title').textContent = 'Importazione Livello (Incolla JSON)';
+        document.getElementById('modal-title').textContent = i18n.get('modalImportTitle');
         document.getElementById('json-output').value = '';
         document.getElementById('json-output').readOnly = false;
         document.getElementById('btn-copy-json').classList.add('hidden');
@@ -367,10 +455,12 @@ class LevelEditor {
 
     updateStatusBar() {
         const status = document.getElementById('statusbar');
-        const cur = PALETTE_DEFINITIONS.find(p => p.type === this.selectedType);
+        const defs = getPaletteDefinitions();
+        const cur = defs.find(p => p.type === this.selectedType);
         const colStr = this.hoverCol >= 0 ? this.hoverCol : '-';
         const rowStr = this.hoverRow >= 0 ? this.hoverRow : '-';
-        status.textContent = `Col: ${colStr}, Riga: ${rowStr} | Strumento attivo: ${cur ? cur.name : 'N/A'}`;
+        const toolName = cur ? i18n.get(cur.nameKey) : 'N/A';
+        status.textContent = `${i18n.get('edStatusCol')}${colStr}${i18n.get('edStatusRow')}${rowStr}${i18n.get('edStatusTool')}${toolName}`;
     }
 
     /**
@@ -446,7 +536,6 @@ class LevelEditor {
 
         switch (type) {
             case TILE_TYPES.EMPTY:
-                // Sfondo vuoto
                 this.ctx.fillStyle = '#080c16';
                 this.ctx.fillRect(x, y, s, s);
                 break;

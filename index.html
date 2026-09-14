@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -8,6 +8,28 @@
 </head>
 <body>
 
+    <!-- SELETTORE LINGUA (EN / IT / JA) -->
+    <div class="lang-selector">
+        <button class="lang-btn active" data-lang="en">EN</button>
+        <button class="lang-btn" data-lang="it">IT</button>
+        <button class="lang-btn" data-lang="ja">JA</button>
+    </div>
+
+    <!-- SECURITY CLEARANCE GATE (RICHIESTA PASSWORD IDSPISPOPD) -->
+    <div id="security-gate">
+        <div class="terminal-box">
+            <img src="assets/logo_cropped.png" alt="TURCLON" class="title-logo" style="max-width: 280px; margin-bottom: 4px;">
+            <h2 id="gate-title" class="terminal-title">SECURITY CLEARANCE REQUIRED</h2>
+            <p id="gate-sub" class="terminal-sub">RESTRICTED NEO-GEO SYSTEM // ENTER ACCESS CODE</p>
+
+            <form class="gate-form" onsubmit="return false;">
+                <input type="password" id="gate-password" class="gate-input" placeholder="ACCESS CODE" autocomplete="off" autofocus>
+                <button type="submit" id="gate-submit" class="btn-arcade">AUTHENTICATE</button>
+                <div id="gate-error" class="gate-error-msg"></div>
+            </form>
+        </div>
+    </div>
+
     <div id="game-container">
         <!-- Canvas principale con buffer 384x216 scalato dinamicamente -->
         <canvas id="game-canvas" width="384" height="216"></canvas>
@@ -15,37 +37,38 @@
 
         <!-- SCHERMATA INIZIALE (START OVERLAY) -->
         <div id="start-overlay" class="overlay">
-            <h1 class="title-glow">TURCLON</h1>
-            <p class="subtitle">NEO-GEO 16-BIT RUN 'N' GUN</p>
+            <!-- Immagine Logo TURCLON Ufficiale -->
+            <img src="assets/logo_cropped.png" alt="TURCLON" class="title-logo">
+            <p id="start-subtitle" class="subtitle">NEO-GEO 16-BIT RUN 'N' GUN</p>
 
             <div class="instructions">
-                <p><strong>[ DESKTOP ]</strong></p>
-                <p>Movimento: <strong>WASD</strong> oppure <strong>Frecce</strong></p>
-                <p>Salto: <strong>Spazio</strong> o <strong>Z</strong> | Sparo: <strong>X</strong> o <strong>K</strong></p>
-                <p>Scendi da piattaforme: <strong>Giù (S / Freccia Giù) + Salto</strong></p>
+                <p id="ctrl-desktop-header"><strong>[ DESKTOP CONTROLS ]</strong></p>
+                <p id="ctrl-move">Move: <strong>WASD</strong> or <strong>Arrow Keys</strong></p>
+                <p id="ctrl-action">Jump: <strong>Space</strong> or <strong>Z</strong> | Fire: <strong>X</strong> or <strong>K</strong></p>
+                <p id="ctrl-drop">Drop through platforms: <strong>Down (S / Down Arrow) + Jump</strong></p>
                 <br>
-                <p><strong>[ MOBILE ]</strong></p>
-                <p>D-Pad virtuale a sinistra | Salto (A) e Sparo (B) a destra</p>
+                <p id="ctrl-mobile-header"><strong>[ MOBILE TOUCH ]</strong></p>
+                <p id="ctrl-mobile-desc">Virtual D-Pad on left | Jump (A) and Fire (B) on right</p>
             </div>
 
-            <button class="btn-arcade blink">TOCCA O PREMI SPAZIO PER INIZIARE</button>
-            <a href="editor.html" class="btn-arcade btn-secondary" style="text-decoration: none;">APRI EDITOR LIVELLI</a>
+            <button id="btn-start" class="btn-arcade blink">TAP OR PRESS SPACE TO START</button>
+            <a href="editor.html" id="btn-open-editor" class="btn-arcade btn-secondary" style="text-decoration: none;">OPEN LEVEL EDITOR</a>
         </div>
 
         <!-- SCHERMATA GAME OVER -->
         <div id="game-over-overlay" class="overlay hidden">
-            <h1 class="title-glow" style="color: var(--danger-red); text-shadow: 0 0 20px var(--danger-red);">MISSION FAILED</h1>
-            <p class="subtitle">TUTTE LE VITE SONO ESAURITE</p>
-            <button class="btn-arcade blink">PREMI SPAZIO PER RIPROVARE</button>
+            <h1 id="game-over-title" class="title-glow" style="color: var(--danger-red); text-shadow: 0 0 20px var(--danger-red);">MISSION FAILED</h1>
+            <p id="game-over-subtitle" class="subtitle">ALL LIVES EXHAUSTED</p>
+            <button id="btn-retry" class="btn-arcade blink">PRESS SPACE TO RETRY</button>
         </div>
 
         <!-- SCHERMATA LIVELLO COMPLETATO (VICTORY) -->
         <div id="victory-overlay" class="overlay hidden">
-            <h1 class="title-glow" style="color: var(--neon-green); text-shadow: 0 0 20px var(--neon-green);">STAGE CLEAR!</h1>
+            <h1 id="victory-title" class="title-glow" style="color: var(--neon-green); text-shadow: 0 0 20px var(--neon-green);">STAGE CLEAR!</h1>
             <p id="victory-score" class="subtitle">SCORE: 000000</p>
-            <p class="instructions">Hai completato il Settore 01 con successo!</p>
-            <button class="btn-arcade blink">GIOCA ANCORA</button>
-            <a href="editor.html" class="btn-arcade btn-secondary" style="text-decoration: none;">CREA IL TUO LIVELLO</a>
+            <p id="victory-desc" class="instructions">Sector 01 successfully secured!</p>
+            <button id="btn-play-again" class="btn-arcade blink">PLAY AGAIN</button>
+            <a href="editor.html" id="btn-create-level" class="btn-arcade btn-secondary" style="text-decoration: none;">CREATE YOUR OWN LEVEL</a>
         </div>
 
         <!-- CONTROLLI TOUCH PER SMARTPHONE E TABLET -->
@@ -53,24 +76,24 @@
             <!-- D-Pad orizzontale e discesa -->
             <div class="touch-cluster">
                 <div class="touch-dpad">
-                    <button id="btn-left" class="touch-btn" aria-label="Sinistra">◀</button>
-                    <button id="btn-down" class="touch-btn" aria-label="Giù">▼</button>
-                    <button id="btn-right" class="touch-btn" aria-label="Destra">▶</button>
+                    <button id="btn-left" class="touch-btn" aria-label="Left">◀</button>
+                    <button id="btn-down" class="touch-btn" aria-label="Down">▼</button>
+                    <button id="btn-right" class="touch-btn" aria-label="Right">▶</button>
                 </div>
             </div>
 
             <!-- Pulsanti di azione SALTO (A) e SPARO (B) -->
             <div class="touch-cluster">
-                <button id="btn-shoot" class="touch-btn btn-action-b" aria-label="Sparo">B</button>
-                <button id="btn-jump" class="touch-btn btn-action-a" aria-label="Salto">A</button>
+                <button id="btn-shoot" class="touch-btn btn-action-b" aria-label="Fire">B</button>
+                <button id="btn-jump" class="touch-btn btn-action-a" aria-label="Jump">A</button>
             </div>
         </div>
 
         <!-- AVVISO DI ROTAZIONE IN LANDSCAPE -->
         <div id="portrait-warning">
             <span>📱 ➔ 🔄</span>
-            <h2>RUOTA IL DISPOSITIVO</h2>
-            <p>Per la migliore esperienza arcade Neo-Geo, posiziona lo schermo in orizzontale (Landscape).</p>
+            <h2 id="rotate-title">ROTATE YOUR DEVICE</h2>
+            <p id="rotate-desc">For the authentic Neo-Geo arcade experience, please rotate to Landscape mode.</p>
         </div>
     </div>
 

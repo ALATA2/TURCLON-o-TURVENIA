@@ -6,9 +6,26 @@ Sviluppato interamente in **HTML5 Canvas** e **Vanilla JavaScript puro** (nessun
 
 ---
 
+## 🔐 Accesso di Sicurezza (Password Gate)
+
+Il gioco e l'editor sono protetti da un terminale di sicurezza Neo-Geo che richiede la password ad ogni accesso al sito:
+- **Codice di Accesso / Password**: `idspispopd`
+
+---
+
+## 🌐 Supporto Multilingua (i18n)
+
+L'interfaccia è interamente tradotta e include un selettore dinamico rapido (`EN` | `IT` | `JA`):
+- **English** (Default)
+- **Italiano**
+- **日本語 (Giapponese)**
+
+---
+
 ## 🚀 Caratteristiche Principali
 
 ### 1. Il Gioco (`index.html`)
+- **Logo Ufficiale**: Logo arcade originale con rendering ad alta fedeltà e bagliore neon.
 - **Risoluzione Retro Pixel-Perfect**: Buffer virtuale 16:9 a **384x216** scalato dinamicamente mantenendo pixel nitidi (`image-rendering: pixelated`).
 - **Sfondo Parallasse a 4 Strati**:
   - *Layer 0*: Cielo cosmico con stella cadente, gradiente al neon e luna aliena gigante.
@@ -60,15 +77,20 @@ Un tool visuale per disegnare nuovi settori o modificare il Settore 01 di fabbri
 
 ```
 TURCLON-o-TURVENIA/
-├── index.html              # Entry point del gioco
-├── style.css               # Stili del gioco, responsive canvas e touch overlay
+├── index.html              # Entry point del gioco (con Security Gate & i18n)
+├── style.css               # Stili del gioco, responsive canvas, touch overlay e terminale
 ├── editor.html             # Entry point del Level Lab
 ├── editor.css              # Stili dell'editor di livelli
 ├── editor.js               # Logica dell'editor
 ├── README.md               # Documentazione del progetto
+├── assets/
+│   ├── logo.png            # Immagine logo originale
+│   └── logo_cropped.png    # Immagine logo trasparente ottimizzata
 └── js/
     ├── config.js           # Costanti globali, risoluzione, costanti fisiche
     ├── audio.js            # Sintetizzatore Web Audio API
+    ├── auth.js             # Terminale di autenticazione password idspispopd
+    ├── i18n.js             # Modulo internazionalizzazione (EN, IT, JA)
     ├── input.js            # Input manager Desktop & Touch
     ├── particles.js        # Motore di particelle ed esplosioni
     ├── parallax.js         # Motore parallasse a 4 strati
@@ -98,4 +120,4 @@ Poi apri nel browser:
 - **Gioco**: `http://localhost:8080/index.html`
 - **Editor di Livelli**: `http://localhost:8080/editor.html`
 
-Oppure abilita **GitHub Pages** nelle impostazioni del repository (Source: `main` branch, root `/`) per giocarci direttamente online da qualsiasi dispositivo mobile o desktop!
+All'apertura inserisci la password: **`idspispopd`** per sbloccare il sistema.
