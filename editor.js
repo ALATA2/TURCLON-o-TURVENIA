@@ -1,6 +1,7 @@
 /**
  * TURCLON - Level Lab Editor Logic
- * Editor visuale di livelli con drag-to-paint, zoom, esportazione, autenticazione e i18n.
+ * Editor visuale ottimizzato per mappe estese in stile Turrican (274x102 = 27.948 tile).
+ * Include Viewport Culling ad alte prestazioni, zoom a 6 livelli, esportazione, autenticazione e i18n.
  */
 
 import { TILE_TYPES, PALETTE } from './js/config.js';
@@ -8,7 +9,6 @@ import { LEVEL_1 } from './js/levels.js';
 import { i18n } from './js/i18n.js';
 import { AuthGate } from './js/auth.js';
 
-// Ritorna le definizioni della palette con testi localizzati
 function getPaletteDefinitions() {
     return [
         { type: TILE_TYPES.SOLID, nameKey: 'tileSolidName', descKey: 'tileSolidDesc', color: '#2a354b', letter: '■' },
@@ -28,13 +28,18 @@ class LevelEditor {
         this.canvas = document.getElementById('editor-canvas');
         this.ctx = this.canvas.getContext('2d');
         this.ctx.imageSmoothingEnabled = false;
+        this.viewport = document.getElementById('viewport');
 
-        // Dimensioni griglia
-        this.cols = 100;
-        this.rows = 14;
+        // Dimensioni griglia (Default scala Turrican: 274x102)
+        this.cols = LEVEL_1.width;
+        this.rows = LEVEL_1.height;
         this.baseTileSize = 16;
-        this.zoom = 2; // Moltiplicatore pixel visivi (es. 16px -> 32px)
-        this.tileSize = this.baseTileSize * this.zoom;
+
+        // Livelli di zoom: 0.5x, 0.75x, 1x, 1.5x, 2x, 3x
+        this.zoomLevels = [0.5, 0.75, 1, 1.5, 2, 3];
+        this.zoomIndex = 2; // Default: 1x (indice 2)
+        this.zoom = this.zoomLevels[this.zoomIndex];
+        this.tileSize = Math.round(this.baseTileSize * this.zoom);
 
         // Matrice dati livello
         this.map = [];
@@ -42,7 +47,7 @@ class LevelEditor {
         // Stato strumento selezionato
         this.selectedType = TILE_TYPES.SOLID;
         this.isPainting = false;
-        this.paintButton = 0; // 0 = sinistro (dipinge), 2 = destro (cancella)
+        this.paintButton = 0; // 0 = sinistro, 2 = destro
 
         // Cursore mouse
         this.hoverCol = -1;
@@ -111,7 +116,6 @@ class LevelEditor {
         setTxt('gate-submit', 'pwdSubmit');
 
         // Header & Toolbars
-        setTxt('ed-tagline', 'edTitle');
         setTxt('lbl-width', 'edWidth');
         setTxt('lbl-height', 'edHeight');
         setTxt('btn-resize', 'edApply');
@@ -154,7 +158,7 @@ class LevelEditor {
             }
         }
 
-        // Carica Level 1 di fabbrica
+        // Carica Level 1 Turrican Scale (274x102)
         this.cols = LEVEL_1.width;
         this.rows = LEVEL_1.height;
         this.map = JSON.parse(JSON.stringify(LEVEL_1.data));
@@ -204,20 +208,26 @@ class LevelEditor {
      * Ridimensiona il canvas in base a zoom e dimensioni del livello
      */
     resizeCanvas() {
-        this.tileSize = this.baseTileSize * this.zoom;
+        this.tileSize = Math.round(this.baseTileSize * this.zoom);
         this.canvas.width = this.cols * this.tileSize;
         this.canvas.height = this.rows * this.tileSize;
         this.draw();
     }
 
     /**
-     * Registra gli ascoltatori eventi (mouse, pulsanti, zoom, modale)
+     * Registra gli ascoltatori eventi (mouse, tasti, zoom, scroll culling, modale)
      */
     setupEventListeners() {
         this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
+        // Viewport Scroll: esegue culling istantaneo durante lo scrolling
+        if (this.viewport) {
+            this.viewport.addEventListener('scroll', () => {
+                this.draw();
+            }, { passive: true });
+        }
+
         this.canvas.addEventListener('mousedown', (e) => {
-            // Blocca se security gate attivo
             const gate = document.getElementById('security-gate');
             if (gate && !gate.classList.contains('hidden')) return;
 
@@ -261,18 +271,20 @@ class LevelEditor {
             }
         });
 
-        // Zoom In / Out
+        // Zoom In / Out con array zoomLevels
         document.getElementById('btn-zoom-in').addEventListener('click', () => {
-            if (this.zoom < 4) {
-                this.zoom += 1;
+            if (this.zoomIndex < this.zoomLevels.length - 1) {
+                this.zoomIndex += 1;
+                this.zoom = this.zoomLevels[this.zoomIndex];
                 document.getElementById('zoom-level').textContent = `${this.zoom}x`;
                 this.resizeCanvas();
             }
         });
 
         document.getElementById('btn-zoom-out').addEventListener('click', () => {
-            if (this.zoom > 1) {
-                this.zoom -= 1;
+            if (this.zoomIndex > 0) {
+                this.zoomIndex -= 1;
+                this.zoom = this.zoomLevels[this.zoomIndex];
                 document.getElementById('zoom-level').textContent = `${this.zoom}x`;
                 this.resizeCanvas();
             }
@@ -377,10 +389,9 @@ class LevelEditor {
 
         if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return;
 
-        // Se tasto destro (button 2) cancella con EMPTY
         const typeToSet = (this.paintButton === 2) ? TILE_TYPES.EMPTY : this.selectedType;
 
-        // Regola di unicità per Spawn e Goal (possono esisterne solo 1 nel livello)
+        // Unicità per Spawn e Goal
         if (typeToSet === TILE_TYPES.SPAWN || typeToSet === TILE_TYPES.GOAL) {
             for (let r = 0; r < this.rows; r++) {
                 for (let c = 0; c < this.cols; c++) {
@@ -411,9 +422,6 @@ class LevelEditor {
         this.resizeCanvas();
     }
 
-    /**
-     * Salva il livello in localStorage e apre il gioco in una nuova scheda
-     */
     saveAndPlay() {
         const exportObj = {
             name: "CUSTOM LEVEL",
@@ -460,37 +468,56 @@ class LevelEditor {
         const colStr = this.hoverCol >= 0 ? this.hoverCol : '-';
         const rowStr = this.hoverRow >= 0 ? this.hoverRow : '-';
         const toolName = cur ? i18n.get(cur.nameKey) : 'N/A';
-        status.textContent = `${i18n.get('edStatusCol')}${colStr}${i18n.get('edStatusRow')}${rowStr}${i18n.get('edStatusTool')}${toolName}`;
+        status.textContent = `${i18n.get('edStatusCol')}${colStr}${i18n.get('edStatusRow')}${rowStr} (${this.cols}x${this.rows}) | Zoom: ${this.zoom}x | ${i18n.get('edStatusTool')}${toolName}`;
     }
 
     /**
-     * Disegna l'intera griglia dell'editor con estetica 16-bit
+     * Disegna l'area visibile del canvas con VIEWPORT CULLING ad alta efficienza.
+     * Rendering fluido a 60fps anche su 274x102 (27.948 tile).
      */
     draw() {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        // Calcola l'intervallo di celle visibili nel viewport con margine di tolleranza
+        const scrollLeft = this.viewport ? this.viewport.scrollLeft : 0;
+        const scrollTop = this.viewport ? this.viewport.scrollTop : 0;
+        const viewW = this.viewport ? this.viewport.clientWidth : this.canvas.width;
+        const viewH = this.viewport ? this.viewport.clientHeight : this.canvas.height;
 
-        // 1. Disegna i blocchi
-        for (let r = 0; r < this.rows; r++) {
-            for (let c = 0; c < this.cols; c++) {
+        const margin = 2;
+        const startCol = Math.max(0, Math.floor(scrollLeft / this.tileSize) - margin);
+        const endCol = Math.min(this.cols - 1, Math.ceil((scrollLeft + viewW) / this.tileSize) + margin);
+        const startRow = Math.max(0, Math.floor(scrollTop / this.tileSize) - margin);
+        const endRow = Math.min(this.rows - 1, Math.ceil((scrollTop + viewH) / this.tileSize) + margin);
+
+        // Pulisce l'area visibile
+        const clearX = startCol * this.tileSize;
+        const clearY = startRow * this.tileSize;
+        const clearW = (endCol - startCol + 1) * this.tileSize;
+        const clearH = (endRow - startRow + 1) * this.tileSize;
+        this.ctx.fillStyle = '#080c16';
+        this.ctx.fillRect(clearX, clearY, clearW, clearH);
+
+        // 1. Disegna i blocchi visibili
+        for (let r = startRow; r <= endRow; r++) {
+            for (let c = startCol; c <= endCol; c++) {
                 const type = this.map[r][c];
+                if (type === TILE_TYPES.EMPTY) continue;
+
                 const x = c * this.tileSize;
                 const y = r * this.tileSize;
-
                 this.drawTile(type, x, y);
             }
         }
 
-        // 2. Disegna linee della griglia
+        // 2. Griglia visibile
         this.ctx.strokeStyle = '#18243c';
         this.ctx.lineWidth = 1;
 
         // Linee verticali
-        for (let c = 0; c <= this.cols; c++) {
+        for (let c = startCol; c <= endCol + 1; c++) {
             const x = c * this.tileSize;
             this.ctx.beginPath();
-            this.ctx.moveTo(x, 0);
-            this.ctx.lineTo(x, this.canvas.height);
-            // Evidenzia ogni 10 colonne con un colore più visibile
+            this.ctx.moveTo(x, clearY);
+            this.ctx.lineTo(x, clearY + clearH);
             if (c % 10 === 0) {
                 this.ctx.strokeStyle = '#2b3f66';
                 this.ctx.stroke();
@@ -501,23 +528,31 @@ class LevelEditor {
         }
 
         // Linee orizzontali
-        for (let r = 0; r <= this.rows; r++) {
+        for (let r = startRow; r <= endRow + 1; r++) {
             const y = r * this.tileSize;
             this.ctx.beginPath();
-            this.ctx.moveTo(0, y);
-            this.ctx.lineTo(this.canvas.width, y);
-            this.ctx.stroke();
+            this.ctx.moveTo(clearX, y);
+            this.ctx.lineTo(clearX + clearW, y);
+            if (r % 10 === 0) {
+                this.ctx.strokeStyle = '#2b3f66';
+                this.ctx.stroke();
+                this.ctx.strokeStyle = '#18243c';
+            } else {
+                this.ctx.stroke();
+            }
         }
 
-        // 3. Numerazione colonne in alto per orientamento
+        // 3. Numerazione colonne e righe di riferimento
         this.ctx.fillStyle = '#657ea8';
-        this.ctx.font = `${Math.max(9, this.tileSize * 0.35)}px monospace`;
+        this.ctx.font = `${Math.max(8, this.tileSize * 0.35)}px monospace`;
         this.ctx.textAlign = 'center';
-        for (let c = 0; c < this.cols; c += 5) {
-            this.ctx.fillText(`${c}`, c * this.tileSize + this.tileSize * 0.5, 11);
+        for (let c = startCol; c <= endCol; c++) {
+            if (c % 10 === 0 && startRow === 0) {
+                this.ctx.fillText(`${c}`, c * this.tileSize + this.tileSize * 0.5, 11);
+            }
         }
 
-        // 4. Evidenziazione tile sotto il cursore (Hover cursor)
+        // 4. Evidenziazione cursore attivo
         if (this.hoverCol >= 0 && this.hoverCol < this.cols && this.hoverRow >= 0 && this.hoverRow < this.rows) {
             const hx = this.hoverCol * this.tileSize;
             const hy = this.hoverRow * this.tileSize;
@@ -533,46 +568,42 @@ class LevelEditor {
      */
     drawTile(type, x, y) {
         const s = this.tileSize;
+        const z = this.zoom;
 
         switch (type) {
             case TILE_TYPES.EMPTY:
-                this.ctx.fillStyle = '#080c16';
-                this.ctx.fillRect(x, y, s, s);
                 break;
 
             case TILE_TYPES.SOLID:
                 this.ctx.fillStyle = PALETTE.STEEL_GRAY;
                 this.ctx.fillRect(x, y, s, s);
                 this.ctx.fillStyle = PALETTE.STEEL_LIGHT;
-                this.ctx.fillRect(x, y, s, 2 * this.zoom);
-                this.ctx.fillRect(x, y, 2 * this.zoom, s);
+                this.ctx.fillRect(x, y, s, Math.max(1, 2 * z));
+                this.ctx.fillRect(x, y, Math.max(1, 2 * z), s);
                 this.ctx.fillStyle = PALETTE.DARK_NAVY;
-                this.ctx.fillRect(x, y + s - 2 * this.zoom, s, 2 * this.zoom);
-                this.ctx.fillRect(x + s - 2 * this.zoom, y, 2 * this.zoom, s);
-                // Rivetti
-                this.ctx.fillStyle = PALETTE.STEEL_HIGHLIGHT;
-                this.ctx.fillRect(x + 2 * this.zoom, y + 2 * this.zoom, 2 * this.zoom, 2 * this.zoom);
-                this.ctx.fillRect(x + s - 4 * this.zoom, y + 2 * this.zoom, 2 * this.zoom, 2 * this.zoom);
+                this.ctx.fillRect(x, y + s - Math.max(1, 2 * z), s, Math.max(1, 2 * z));
+                this.ctx.fillRect(x + s - Math.max(1, 2 * z), y, Math.max(1, 2 * z), s);
+                if (z >= 1) {
+                    this.ctx.fillStyle = PALETTE.STEEL_HIGHLIGHT;
+                    this.ctx.fillRect(x + 2 * z, y + 2 * z, 2 * z, 2 * z);
+                    this.ctx.fillRect(x + s - 4 * z, y + 2 * z, 2 * z, 2 * z);
+                }
                 break;
 
             case TILE_TYPES.PLATFORM:
-                this.ctx.fillStyle = '#080c16';
-                this.ctx.fillRect(x, y, s, s);
                 this.ctx.fillStyle = PALETTE.STEEL_LIGHT;
-                this.ctx.fillRect(x, y, s, 4 * this.zoom);
+                this.ctx.fillRect(x, y, s, Math.max(2, 4 * z));
                 this.ctx.fillStyle = PALETTE.CYBER_BLUE;
-                this.ctx.fillRect(x, y, s, 1 * this.zoom);
+                this.ctx.fillRect(x, y, s, Math.max(1, 1 * z));
                 break;
 
             case TILE_TYPES.HAZARD:
-                this.ctx.fillStyle = '#080c16';
-                this.ctx.fillRect(x, y, s, s);
                 this.ctx.fillStyle = PALETTE.DANGER_RED;
                 for (let i = 0; i < 3; i++) {
                     const sx = x + i * (s / 3);
                     this.ctx.beginPath();
                     this.ctx.moveTo(sx, y + s);
-                    this.ctx.lineTo(sx + s / 6, y + 4 * this.zoom);
+                    this.ctx.lineTo(sx + s / 6, y + Math.max(2, 4 * z));
                     this.ctx.lineTo(sx + s / 3, y + s);
                     this.ctx.fill();
                 }
@@ -582,7 +613,7 @@ class LevelEditor {
                 this.ctx.fillStyle = '#a65b1c';
                 this.ctx.fillRect(x, y, s, s);
                 this.ctx.strokeStyle = '#6e380a';
-                this.ctx.lineWidth = 2 * this.zoom;
+                this.ctx.lineWidth = Math.max(1, 2 * z);
                 this.ctx.beginPath();
                 this.ctx.moveTo(x + 2, y + 2);
                 this.ctx.lineTo(x + s - 2, y + s - 2);
@@ -592,10 +623,8 @@ class LevelEditor {
                 break;
 
             case TILE_TYPES.SPAWN:
-                this.ctx.fillStyle = '#080c16';
-                this.ctx.fillRect(x, y, s, s);
                 this.ctx.fillStyle = PALETTE.CYBER_BLUE;
-                this.ctx.fillRect(x + 2 * this.zoom, y + s - 4 * this.zoom, s - 4 * this.zoom, 4 * this.zoom);
+                this.ctx.fillRect(x + 2 * z, y + s - Math.max(2, 4 * z), s - 4 * z, Math.max(2, 4 * z));
                 this.ctx.fillStyle = '#ffffff';
                 this.ctx.font = `bold ${Math.round(s * 0.55)}px monospace`;
                 this.ctx.textAlign = 'center';
@@ -603,7 +632,7 @@ class LevelEditor {
                 break;
 
             case TILE_TYPES.ENEMY:
-                this.ctx.fillStyle = 'rgba(255, 23, 68, 0.2)';
+                this.ctx.fillStyle = 'rgba(255, 23, 68, 0.4)';
                 this.ctx.fillRect(x, y, s, s);
                 this.ctx.fillStyle = PALETTE.DANGER_RED;
                 this.ctx.font = `bold ${Math.round(s * 0.55)}px monospace`;
@@ -612,11 +641,11 @@ class LevelEditor {
                 break;
 
             case TILE_TYPES.GOAL:
-                this.ctx.fillStyle = 'rgba(255, 230, 0, 0.25)';
+                this.ctx.fillStyle = 'rgba(255, 230, 0, 0.3)';
                 this.ctx.fillRect(x, y, s, s);
                 this.ctx.strokeStyle = PALETTE.NEO_YELLOW;
-                this.ctx.lineWidth = 2 * this.zoom;
-                this.ctx.strokeRect(x + 2 * this.zoom, y + 2 * this.zoom, s - 4 * this.zoom, s - 4 * this.zoom);
+                this.ctx.lineWidth = Math.max(1, 2 * z);
+                this.ctx.strokeRect(x + 2 * z, y + 2 * z, s - 4 * z, s - 4 * z);
                 this.ctx.fillStyle = '#ffffff';
                 this.ctx.font = `bold ${Math.round(s * 0.55)}px monospace`;
                 this.ctx.textAlign = 'center';
@@ -624,13 +653,11 @@ class LevelEditor {
                 break;
 
             case TILE_TYPES.ENERGY:
-                this.ctx.fillStyle = '#080c16';
-                this.ctx.fillRect(x, y, s, s);
                 this.ctx.fillStyle = PALETTE.NEON_GREEN;
-                this.ctx.fillRect(x + 4 * this.zoom, y + 4 * this.zoom, 8 * this.zoom, 8 * this.zoom);
+                this.ctx.fillRect(x + 4 * z, y + 4 * z, Math.max(4, 8 * z), Math.max(4, 8 * z));
                 this.ctx.fillStyle = '#ffffff';
-                this.ctx.fillRect(x + 7 * this.zoom, y + 5 * this.zoom, 2 * this.zoom, 6 * this.zoom);
-                this.ctx.fillRect(x + 5 * this.zoom, y + 7 * this.zoom, 6 * this.zoom, 2 * this.zoom);
+                this.ctx.fillRect(x + 7 * z, y + 5 * z, Math.max(1, 2 * z), Math.max(2, 6 * z));
+                this.ctx.fillRect(x + 5 * z, y + 7 * z, Math.max(2, 6 * z), Math.max(1, 2 * z));
                 break;
         }
     }

@@ -1,8 +1,27 @@
 # TURCLON (o TURVENIA) — 16-Bit Neo-Geo Run 'n' Gun Engine & Level Lab
 
-Prototipo giocabile del primo livello di un videogioco platformer / run 'n' gun ispirato a pietre miliari come *Turrican* e *Metroid*, con estetica arcade 16-bit dell'era Neo-Geo (palette cromatiche sature, parallasse multi-strato, audio sintetizzato e sprite ad alta definizione).
+Prototipo giocabile del primo livello di un videogioco platformer / run 'n' gun ispirato a pietre miliari come *Turrican* e *Metroid*, con estetica arcade 16-bit dell'era Neo-Geo (palette cromatiche sature, parallasse multi-strato 2D, illuminazione dinamica Hi-Bit, audio sintetizzato e sprite ad alta definizione).
 
 Sviluppato interamente in **HTML5 Canvas** e **Vanilla JavaScript puro** (nessun framework pesante o dipendenza esterna).
+
+---
+
+## 🗺️ Dimensioni Autentiche Turrican (274 × 102 Tile)
+
+Il livello non è un semplice corridoio lineare, ma riproduce le proporzioni e l'esplorazione verticale del leggendario *Turrican* originale:
+- **Dimensioni totali**: **274 × 102 tile** (pari a **4384 × 1632 pixel** a 16px per tile).
+- **Esplorazione Multilivello**: Base di lancio in superficie, torrette sopraelevate, pozzo minerario a caduta verticale (profondo oltre 800 pixel), labirinto industriale sotterraneo, sala generatori al plasma e viadotto sospeso finale.
+- **Telecamera 2D con Inseguimento X & Y**: La telecamera segue il giocatore sia negli spostamenti orizzontali che nei salti o cadute verticali profonde, con interpolazione *Lerp* fluida.
+
+---
+
+## 💡 Illuminazione Dinamica Hi-Bit (Neon Glow)
+
+- Effetto **Bloom e Luce Volumetrica 2D** in tempo reale su Canvas:
+  - I proiettili al plasma emettono aloni ciano/gialli radiali che illuminano pareti e nemici.
+  - La vampa del cannone (*muzzle flash*) e il visore del giocatore emettono fasci luminosi dinamici.
+  - Il Portale Warp Gate pulsa con un'aura dorata/magenta avvolgente.
+  - Le capsule energetiche e le trappole laser irradiano luce fluorescente al buio.
 
 ---
 
@@ -25,47 +44,35 @@ L'interfaccia è interamente tradotta e include un selettore dinamico rapido (`E
 ## 🚀 Caratteristiche Principali
 
 ### 1. Il Gioco (`index.html`)
-- **Logo Ufficiale**: Logo arcade originale con rendering ad alta fedeltà e bagliore neon.
-- **Risoluzione Retro Pixel-Perfect**: Buffer virtuale 16:9 a **384x216** scalato dinamicamente mantenendo pixel nitidi (`image-rendering: pixelated`).
-- **Sfondo Parallasse a 4 Strati**:
-  - *Layer 0*: Cielo cosmico con stella cadente, gradiente al neon e luna aliena gigante.
-  - *Layer 1*: Skyline cibernetica di grattacieli con luci di segnalazione rosse intermittenti sulle antenne.
+- **Logo Ufficiale**: Logo arcade originale ad alta risoluzione con rendering pixel-perfect e bagliore neon.
+- **Risoluzione Retro Pixel-Perfect**: Buffer virtuale 16:9 a **384x216** scalato dinamicamente con `image-rendering: pixelated`.
+- **Sfondo Parallasse a 4 Strati Bidirezionale (2D)**:
+  - *Layer 0*: Cielo cosmico con stella cadente, gradiente al neon e luna aliena gigante; transizione verso atmosfera cavernosa nelle profondità sotterranee.
+  - *Layer 1*: Skyline cibernetica con luci di segnalazione rosse intermittenti sulle antenne (parallasse X e Y).
   - *Layer 2*: Travi industriali e condotti metallici con indicatori al plasma pulsanti.
-  - *Layer 3*: Livello giocabile metallico con piastre corazzate e rivetti.
-- **Sprite 16-Bit Procedurali**:
-  - Commando cibernetico armato di cannone al plasma con rinculo, vampa di sparo (*muzzle flash*), animazione di falcata e salto.
-  - Drone deambulatore corazzato con zampe meccaniche animate e occhio sensore laser.
-  - Portale di estrazione / Warp gate animato con anelli energetici rotanti.
+  - *Layer 3*: Livello giocabile metallico da 274x102 celle con viewport culling a 60 FPS costanti.
 - **Audio Sintetizzato Nativo (Web Audio API)**:
-  - Effetti sonori stile arcade a zero file esterni (laser shot con sweep rapido, jump boing, crash di atterraggio, impatto metallico, distruzione nemico con rumore bianco, fanfara vittoria).
+  - Effetti sonori arcade a zero file esterni (laser shot con sweep rapido, jump boing, crash di atterraggio, impatto metallico, distruzione nemico con rumore bianco, fanfara vittoria).
 - **Fisica Fluida & Meccaniche**:
   - Gravità modulare con taglio dell'altezza del salto al rilascio del tasto (*variable jump height*).
   - *Coyote Time* e *Jump Buffer* per evitare input persi.
   - Piattaforme passabili dal basso (One-Way) con possibilità di scendere premendo **Giù + Salto**.
-  - Casse cyber distruggibili a colpi di cannone.
+  - Casse cyber distruggibili a colpi di plasma.
 - **Cross-Platform**:
   - **Desktop**: Tastiera (WASD / Frecce per muoversi, Spazio / Z per saltare, X / K per sparare, S / Giù + Salto per scendere dalle piattaforme).
-  - **Mobile Touch**: Rilevamento automatico touchscreen con D-Pad virtuale a sinistra e pulsanti d'azione A (Salto) e B (Sparo) a destra con pieno supporto al multitouch contemporaneo.
+  - **Mobile Touch**: Rilevamento automatico touchscreen con D-Pad virtuale a sinistra e pulsanti d'azione A (Salto) e B (Sparo) a destra con supporto al multitouch contemporaneo.
 
 ---
 
 ### 2. Il Level Lab / Editor di Livelli (`editor.html`)
-Un tool visuale per disegnare nuovi settori o modificare il Settore 01 di fabbrica:
-- **Palette Elementi**:
-  - `Blocco Solido (1)`: Terreno e pareti corazzate.
-  - `Piattaforma (2)`: Piattaforma semi-solida passabile dal basso.
-  - `Spuntoni / Laser (3)`: Pericolo letale.
-  - `Cassa Cyber (4)`: Blocco distruggibile.
-  - `Spawn Giocatore (5)`: Punto di partenza (con unicità automatica garantita).
-  - `Nemico Drone (6)`: Posizionamento pattugliatori.
-  - `Traguardo Portale (7)`: Portale di estrazione fine livello.
-  - `Ricarica Energia (8)`: Capsula di recupero vita.
-  - `Gomma (0)`: Rimozione tile.
+Un tool visuale per progettare e collaudare mappe colossali:
+- **Viewport Culling ad Alte Prestazioni**: Renderizza istantaneamente solo le celle visibili a schermo; zero lag anche su mappe da oltre 28.000 tile.
+- **Zoom a 6 Livelli**: da **0.5x** (panoramica globale) fino a **3x** (editing di precisione).
+- **Palette Elementi Completa**: Blocco Solido, Piattaforma passabile, Spuntoni/Laser, Cassa Cyber, Spawn Giocatore, Nemico Drone, Portale Warp Gate, Ricarica Energia e Gomma.
 - **Controlli Intuitivi**:
   - **Click & Trascina Sinistro**: dipinge l'elemento selezionato.
   - **Tasto Destro**: cancella istantaneamente.
   - **Shift + Rotellina**: scorrimento orizzontale rapido.
-  - **Zoom 1x / 2x / 3x / 4x** e coordinate colonna/riga in tempo reale.
 - **Esportazione & Test Immediato**:
   - **Esporta JSON**: genera il codice del livello per copia o download file `.json`.
   - **Importa JSON**: carica e ricostruisce qualsiasi livello salvato.
@@ -79,9 +86,9 @@ Un tool visuale per disegnare nuovi settori o modificare il Settore 01 di fabbri
 TURCLON-o-TURVENIA/
 ├── index.html              # Entry point del gioco (con Security Gate & i18n)
 ├── style.css               # Stili del gioco, responsive canvas, touch overlay e terminale
-├── editor.html             # Entry point del Level Lab
+├── editor.html             # Entry point del Level Lab (supporto 274x102)
 ├── editor.css              # Stili dell'editor di livelli
-├── editor.js               # Logica dell'editor
+├── editor.js               # Logica dell'editor (viewport culling a 60fps)
 ├── README.md               # Documentazione del progetto
 ├── assets/
 │   ├── logo.png            # Immagine logo originale
@@ -93,11 +100,11 @@ TURCLON-o-TURVENIA/
     ├── i18n.js             # Modulo internazionalizzazione (EN, IT, JA)
     ├── input.js            # Input manager Desktop & Touch
     ├── particles.js        # Motore di particelle ed esplosioni
-    ├── parallax.js         # Motore parallasse a 4 strati
+    ├── parallax.js         # Motore parallasse 2D a 4 strati
     ├── tilemap.js          # Gestione matrice e collisioni AABB
     ├── entities.js         # Giocatore, Proiettili, Nemici, Portale
-    ├── levels.js           # Matrice del Livello 1 (Sector 01)
-    └── game.js             # Game loop e logica di gioco
+    ├── levels.js           # Matrice autentica Turrican (274x102 = 4384x1632 px)
+    └── game.js             # Game loop, telecamera 2D fluida e illuminazione Hi-Bit
 ```
 
 ---

@@ -1,6 +1,6 @@
 /**
  * TURCLON - Main Game Engine
- * Loop principale, Gestione Camera, HUD Arcade 16-Bit e Stati di Gioco.
+ * Loop principale, Telecamera 2D fluida (X & Y), Illuminazione Dinamica Hi-Bit e HUD Arcade.
  */
 
 import { VIRTUAL_WIDTH, VIRTUAL_HEIGHT, TILE_SIZE, TILE_TYPES, PALETTE } from './config.js';
@@ -28,12 +28,12 @@ class Game {
         this.state = 'START';
         this.stateTimer = 0;
 
-        // Telecamera di gioco
+        // Telecamera di gioco 2D (con supporto scrolling verticale e orizzontale)
         this.camera = { x: 0, y: 0 };
 
         // Entità
         this.player = null;
-        this.spawnPoint = { x: 32, y: 160 };
+        this.spawnPoint = { x: 80, y: 540 };
         this.bullets = [];
         this.enemies = [];
         this.energyPickups = [];
@@ -138,11 +138,8 @@ class Game {
 
         // Gestione avvio al primo click / tap (sblocco AudioContext)
         const startTrigger = () => {
-            // Blocca se l'overlay di password è ancora attivo
             const gate = document.getElementById('security-gate');
-            if (gate && !gate.classList.contains('hidden')) {
-                return;
-            }
+            if (gate && !gate.classList.contains('hidden')) return;
 
             if (this.state === 'START') {
                 audio.init();
@@ -156,7 +153,6 @@ class Game {
         };
 
         window.addEventListener('keydown', (e) => {
-            // Ignora se l'utente sta digitando nella password
             const gate = document.getElementById('security-gate');
             if (gate && !gate.classList.contains('hidden')) return;
 
@@ -192,7 +188,6 @@ class Game {
 
                 if (type === TILE_TYPES.SPAWN) {
                     this.spawnPoint = { x: x, y: y - 6 };
-                    // Rimuovi il tile di spawn dalla mappa solida per renderlo calpestabile
                     this.tilemap.setTile(c, r, TILE_TYPES.EMPTY);
                 } else if (type === TILE_TYPES.ENEMY) {
                     this.enemies.push(new Enemy(x, y));
@@ -216,11 +211,14 @@ class Game {
 
         // Se nessun traguardo è stato impostato, mettilo alla fine del livello
         if (!this.goal) {
-            this.goal = new Goal((level.width - 4) * TILE_SIZE, (level.height - 3) * TILE_SIZE - 16);
+            this.goal = new Goal((level.width - 6) * TILE_SIZE, (level.height - 6) * TILE_SIZE - 16);
         }
 
-        this.camera.x = 0;
-        this.camera.y = 0;
+        // Inizializza telecamera centrata sul giocatore
+        const maxCamX = Math.max(0, this.tilemap.width * TILE_SIZE - VIRTUAL_WIDTH);
+        const maxCamY = Math.max(0, this.tilemap.height * TILE_SIZE - VIRTUAL_HEIGHT);
+        this.camera.x = Math.max(0, Math.min(maxCamX, this.player.x - VIRTUAL_WIDTH * 0.4));
+        this.camera.y = Math.max(0, Math.min(maxCamY, this.player.y - VIRTUAL_HEIGHT * 0.5));
     }
 
     restartGame() {
@@ -264,7 +262,6 @@ class Game {
         let dt = (currentTime - this.lastTime) / 1000;
         this.lastTime = currentTime;
 
-        // Limita il delta time massimo per evitare tunneling nei cali di frame
         if (dt > 0.05) dt = 0.05;
 
         this.update(dt);
@@ -372,17 +369,24 @@ class Game {
                 }
             }
 
-            // Aggiornamento telecamera con inseguimento orizzontale fluido (Lerp)
+            // -------------------------------------------------------------
+            // AGGIORNAMENTO TELECAMERA 2D FLUIDA (X & Y LERP)
+            // Segue il giocatore sia nei salti verticali che nell'esplorazione orizzontale
+            // -------------------------------------------------------------
             const targetCamX = this.player.x - VIRTUAL_WIDTH * 0.4;
-            this.camera.x += (targetCamX - this.camera.x) * 0.12;
+            const targetCamY = this.player.y - VIRTUAL_HEIGHT * 0.5;
 
-            // Limiti telecamera all'interno dei bordi del livello
+            this.camera.x += (targetCamX - this.camera.x) * 0.12;
+            this.camera.y += (targetCamY - this.camera.y) * 0.12;
+
+            // Limiti telecamera entro la mappa 274x102
             const maxCamX = Math.max(0, this.tilemap.width * TILE_SIZE - VIRTUAL_WIDTH);
+            const maxCamY = Math.max(0, this.tilemap.height * TILE_SIZE - VIRTUAL_HEIGHT);
+
             if (this.camera.x < 0) this.camera.x = 0;
             if (this.camera.x > maxCamX) this.camera.x = maxCamX;
-
-            // Fissaggio telecamera verticale
-            this.camera.y = Math.max(0, (this.tilemap.height * TILE_SIZE) - VIRTUAL_HEIGHT);
+            if (this.camera.y < 0) this.camera.y = 0;
+            if (this.camera.y > maxCamY) this.camera.y = maxCamY;
         }
     }
 
@@ -404,10 +408,10 @@ class Game {
     render() {
         this.ctx.clearRect(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
 
-        // 1. Disegna sfondo con effetto Parallasse
+        // 1. Disegna sfondo con Parallasse 2D
         this.parallax.draw(this.ctx, this.camera.x, this.camera.y);
 
-        // 2. Disegna Tilemap (terreno solido, piattaforme passabili)
+        // 2. Disegna Tilemap con Viewport Culling
         this.tilemap.draw(this.ctx, this.camera.x, this.camera.y, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
 
         // 3. Disegna Traguardo
@@ -415,7 +419,7 @@ class Game {
             this.goal.draw(this.ctx, this.camera.x, this.camera.y);
         }
 
-        // 4. Disegna Capsule energetiche non ancora raccolte
+        // 4. Disegna Capsule energetiche
         for (const item of this.energyPickups) {
             if (!item.collected) {
                 const sx = Math.round(item.x - this.camera.x);
@@ -446,8 +450,96 @@ class Game {
         // 8. Disegna Particelle e Popups di punteggio
         this.particles.draw(this.ctx, this.camera.x, this.camera.y);
 
-        // 9. HUD Arcade 16-Bit in sovrimpressione
+        // 9. ILLUMINAZIONE DINAMICA HI-BIT (Neon Glow / Bloom pass)
+        this.drawDynamicLights();
+
+        // 10. HUD Arcade 16-Bit
         this.drawHUD();
+    }
+
+    /**
+     * Pass di Illuminazione Dinamica 2D Hi-Bit (Neon Glow per proiettili, portale ed energia)
+     */
+    drawDynamicLights() {
+        this.ctx.save();
+        this.ctx.globalCompositeOperation = 'lighter';
+
+        // Alone luminoso attorno ai proiettili al plasma
+        for (const b of this.bullets) {
+            const bx = Math.round(b.x + b.width * 0.5 - this.camera.x);
+            const by = Math.round(b.y + b.height * 0.5 - this.camera.y);
+            if (bx > -30 && bx < VIRTUAL_WIDTH + 30 && by > -30 && by < VIRTUAL_HEIGHT + 30) {
+                const grad = this.ctx.createRadialGradient(bx, by, 2, bx, by, 26);
+                grad.addColorStop(0, 'rgba(0, 229, 255, 0.4)');
+                grad.addColorStop(0.5, 'rgba(255, 230, 0, 0.18)');
+                grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                this.ctx.fillStyle = grad;
+                this.ctx.beginPath();
+                this.ctx.arc(bx, by, 26, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+        }
+
+        // Luce d'ambiente e visore del giocatore
+        if (this.player && this.state !== 'STAGE_CLEAR') {
+            const px = Math.round(this.player.x + this.player.width * 0.5 - this.camera.x);
+            const py = Math.round(this.player.y + this.player.height * 0.5 - this.camera.y);
+            const pGrad = this.ctx.createRadialGradient(px, py, 4, px, py, 34);
+            pGrad.addColorStop(0, 'rgba(0, 229, 255, 0.22)');
+            pGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            this.ctx.fillStyle = pGrad;
+            this.ctx.beginPath();
+            this.ctx.arc(px, py, 34, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Lampo vampa di sparo
+            if (this.player.muzzleFlashTimer > 0) {
+                const mx = px + this.player.facing * 14;
+                const mGrad = this.ctx.createRadialGradient(mx, py, 2, mx, py, 42);
+                mGrad.addColorStop(0, 'rgba(255, 230, 0, 0.55)');
+                mGrad.addColorStop(0.5, 'rgba(255, 0, 127, 0.25)');
+                mGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                this.ctx.fillStyle = mGrad;
+                this.ctx.beginPath();
+                this.ctx.arc(mx, py, 42, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+        }
+
+        // Alone vortice del Portale Warp Gate
+        if (this.goal) {
+            const gx = Math.round(this.goal.x + this.goal.width * 0.5 - this.camera.x);
+            const gy = Math.round(this.goal.y + this.goal.height * 0.5 - this.camera.y);
+            if (gx > -60 && gx < VIRTUAL_WIDTH + 60 && gy > -60 && gy < VIRTUAL_HEIGHT + 60) {
+                const gGrad = this.ctx.createRadialGradient(gx, gy, 6, gx, gy, 55);
+                gGrad.addColorStop(0, 'rgba(255, 230, 0, 0.45)');
+                gGrad.addColorStop(0.5, 'rgba(255, 0, 127, 0.22)');
+                gGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                this.ctx.fillStyle = gGrad;
+                this.ctx.beginPath();
+                this.ctx.arc(gx, gy, 55, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+        }
+
+        // Bagliore verde delle capsule energetiche
+        for (const item of this.energyPickups) {
+            if (!item.collected) {
+                const ix = Math.round(item.x + 4 - this.camera.x);
+                const iy = Math.round(item.y + 4 - this.camera.y);
+                if (ix > -20 && ix < VIRTUAL_WIDTH + 20 && iy > -20 && iy < VIRTUAL_HEIGHT + 20) {
+                    const iGrad = this.ctx.createRadialGradient(ix, iy, 2, ix, iy, 18);
+                    iGrad.addColorStop(0, 'rgba(57, 255, 20, 0.35)');
+                    iGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    this.ctx.fillStyle = iGrad;
+                    this.ctx.beginPath();
+                    this.ctx.arc(ix, iy, 18, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+            }
+        }
+
+        this.ctx.restore();
     }
 
     /**
