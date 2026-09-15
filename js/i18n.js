@@ -13,12 +13,22 @@ export const TRANSLATIONS = {
         pwdError: "ACCESS DENIED // INVALID SECURITY CODE",
         pwdSuccess: "ACCESS GRANTED // INITIALIZING SYSTEM...",
 
+        // Credits
+        creditsText: "Created by Michele and Daniele",
+
+        // Pause & Exit Modal (ESC)
+        confirmExitTitle: "MISSION PAUSED",
+        confirmExitDesc: "Are you sure you want to abort and return to the title screen?",
+        btnYesExit: "YES, QUIT",
+        btnNoResume: "NO, RESUME",
+
         // Game Start Screen
         gameSubtitle: "NEO-GEO 16-BIT RUN 'N' GUN",
         controlsDesktopHeader: "[ DESKTOP CONTROLS ]",
         controlsMove: "Move: <strong>WASD</strong> or <strong>Arrow Keys</strong>",
         controlsAction: "Jump: <strong>Space</strong> or <strong>Z</strong> | Fire: <strong>X</strong> or <strong>K</strong>",
         controlsDrop: "Drop through platforms: <strong>Down (S / Down Arrow) + Jump</strong>",
+        controlsEsc: "Pause / Return to menu: <strong>ESC</strong>",
         controlsMobileHeader: "[ MOBILE TOUCH ]",
         controlsMobileDesc: "Virtual D-Pad on left | Jump (A) and Fire (B) on right",
         btnStart: "TAP OR PRESS SPACE TO START",
@@ -109,12 +119,22 @@ export const TRANSLATIONS = {
         pwdError: "ACCESSO NEGATO // CODICE DI SICUREZZA ERRATO",
         pwdSuccess: "ACCESSO CONSENTITO // AVVIO DEL SISTEMA...",
 
+        // Credits
+        creditsText: "Creato da Michele e Daniele",
+
+        // Pause & Exit Modal (ESC)
+        confirmExitTitle: "MISSIONE IN PAUSA",
+        confirmExitDesc: "Sei sicuro di voler uscire e tornare alla schermata principale?",
+        btnYesExit: "SÌ, ESCI",
+        btnNoResume: "NO, CONTINUA",
+
         // Game Start Screen
         gameSubtitle: "RUN 'N' GUN 16-BIT NEO-GEO",
         controlsDesktopHeader: "[ COMANDI DESKTOP ]",
         controlsMove: "Movimento: <strong>WASD</strong> oppure <strong>Frecce</strong>",
         controlsAction: "Salto: <strong>Spazio</strong> o <strong>Z</strong> | Sparo: <strong>X</strong> o <strong>K</strong>",
         controlsDrop: "Scendi da piattaforme: <strong>Giù (S / Freccia Giù) + Salto</strong>",
+        controlsEsc: "Pausa / Ritorna al menu: <strong>ESC</strong>",
         controlsMobileHeader: "[ CONTROLLI TOUCH MOBILE ]",
         controlsMobileDesc: "D-Pad virtuale a sinistra | Salto (A) e Sparo (B) a destra",
         btnStart: "TOCCA O PREMI SPAZIO PER INIZIARE",
@@ -205,12 +225,22 @@ export const TRANSLATIONS = {
         pwdError: "アクセス拒否 // セキュリティコードが無効です",
         pwdSuccess: "アクセス承認 // システムを初期化中...",
 
+        // Credits
+        creditsText: "Michele & Daniele による制作",
+
+        // Pause & Exit Modal (ESC)
+        confirmExitTitle: "作戦一時停止",
+        confirmExitDesc: "作戦を中断してタイトル画面に戻りますか？",
+        btnYesExit: "はい、終了する",
+        btnNoResume: "いいえ、続ける",
+
         // Game Start Screen
         gameSubtitle: "ネオジオ風 16ビット アクションシューティング",
         controlsDesktopHeader: "[ デスクトップ操作 ]",
         controlsMove: "移動: <strong>WASD</strong> または <strong>十字キー</strong>",
         controlsAction: "ジャンプ: <strong>スペース</strong> / <strong>Z</strong> | 射撃: <strong>X</strong> / <strong>K</strong>",
         controlsDrop: "足場を降りる: <strong>下キー (S / ↓) + ジャンプ</strong>",
+        controlsEsc: "ポーズ / メニューへ戻る: <strong>ESC</strong>",
         controlsMobileHeader: "[ モバイルタッチ操作 ]",
         controlsMobileDesc: "左: 仮想D-Pad | 右: ジャンプ (A) & 射撃 (B)",
         btnStart: "画面タップ または スペースでスタート",
@@ -295,7 +325,6 @@ export const TRANSLATIONS = {
 
 class I18nManager {
     constructor() {
-        // Lingua di default: Inglese ('en'), verificando eventuale preferenza salvata
         const savedLang = localStorage.getItem('turclon_lang');
         this.currentLang = (savedLang && TRANSLATIONS[savedLang]) ? savedLang : 'en';
         this.listeners = [];

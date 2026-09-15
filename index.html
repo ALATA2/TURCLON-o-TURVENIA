@@ -46,6 +46,7 @@
                 <p id="ctrl-move">Move: <strong>WASD</strong> or <strong>Arrow Keys</strong></p>
                 <p id="ctrl-action">Jump: <strong>Space</strong> or <strong>Z</strong> | Fire: <strong>X</strong> or <strong>K</strong></p>
                 <p id="ctrl-drop">Drop through platforms: <strong>Down (S / Down Arrow) + Jump</strong></p>
+                <p id="ctrl-esc">Pause / Return to menu: <strong>ESC</strong></p>
                 <br>
                 <p id="ctrl-mobile-header"><strong>[ MOBILE TOUCH ]</strong></p>
                 <p id="ctrl-mobile-desc">Virtual D-Pad on left | Jump (A) and Fire (B) on right</p>
@@ -53,6 +54,21 @@
 
             <button id="btn-start" class="btn-arcade blink">TAP OR PRESS SPACE TO START</button>
             <a href="editor.html" id="btn-open-editor" class="btn-arcade btn-secondary" style="text-decoration: none;">OPEN LEVEL EDITOR</a>
+
+            <!-- CREDITI IN PICCOLO -->
+            <p id="credits-text" class="credits-small">Creato da Michele e Daniele</p>
+        </div>
+
+        <!-- MODALE CONFERMA USCITA / PAUSA (TASTO ESC) -->
+        <div id="pause-modal" class="overlay hidden">
+            <div class="terminal-box" style="max-width: 440px;">
+                <h2 id="pause-title" class="terminal-title" style="color: var(--neo-yellow);">MISSION PAUSED</h2>
+                <p id="pause-desc" class="instructions" style="margin: 8px 0 16px 0;">Are you sure you want to abort and return to the title screen?</p>
+                <div style="display: flex; gap: 14px; justify-content: center;">
+                    <button id="btn-pause-no" class="btn-arcade" style="background: linear-gradient(180deg, #00e5ff 0%, #0088cc 100%); border-color: #00e5ff; color: #000;">NO, RESUME</button>
+                    <button id="btn-pause-yes" class="btn-arcade btn-secondary" style="border-color: var(--danger-red); color: var(--danger-red); margin-top: 0;">YES, QUIT</button>
+                </div>
+            </div>
         </div>
 
         <!-- SCHERMATA GAME OVER -->

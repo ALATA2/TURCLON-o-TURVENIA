@@ -27,6 +27,7 @@ class Game {
         // Stati di gioco: 'START', 'PLAYING', 'STAGE_CLEAR', 'GAME_OVER'
         this.state = 'START';
         this.stateTimer = 0;
+        this.isPaused = false;
 
         // Telecamera di gioco 2D (con supporto scrolling verticale e orizzontale)
         this.camera = { x: 0, y: 0 };
@@ -96,10 +97,18 @@ class Game {
         setHtml('ctrl-move', 'controlsMove');
         setHtml('ctrl-action', 'controlsAction');
         setHtml('ctrl-drop', 'controlsDrop');
+        setHtml('ctrl-esc', 'controlsEsc');
         setHtml('ctrl-mobile-header', 'controlsMobileHeader');
         setTxt('ctrl-mobile-desc', 'controlsMobileDesc');
         setTxt('btn-start', 'btnStart');
         setTxt('btn-open-editor', 'btnEditor');
+        setTxt('credits-text', 'creditsText');
+
+        // Modale di conferma uscita / pausa
+        setTxt('pause-title', 'confirmExitTitle');
+        setTxt('pause-desc', 'confirmExitDesc');
+        setTxt('btn-pause-no', 'btnNoResume');
+        setTxt('btn-pause-yes', 'btnYesExit');
 
         setTxt('game-over-title', 'gameOverTitle');
         setTxt('game-over-subtitle', 'gameOverSubtitle');
@@ -152,9 +161,47 @@ class Game {
             }
         };
 
+        // Gestione finestra di conferma pausa / uscita (tasto ESC)
+        const pauseModal = document.getElementById('pause-modal');
+        const btnPauseNo = document.getElementById('btn-pause-no');
+        const btnPauseYes = document.getElementById('btn-pause-yes');
+
+        const resumeGame = () => {
+            this.isPaused = false;
+            if (pauseModal) pauseModal.classList.add('hidden');
+        };
+
+        const exitToTitle = () => {
+            this.isPaused = false;
+            if (pauseModal) pauseModal.classList.add('hidden');
+            this.state = 'START';
+            this.loadLevel(this.levelData);
+            const startOverlay = document.getElementById('start-overlay');
+            if (startOverlay) startOverlay.classList.remove('hidden');
+        };
+
+        if (btnPauseNo) btnPauseNo.addEventListener('click', resumeGame);
+        if (btnPauseYes) btnPauseYes.addEventListener('click', exitToTitle);
+
         window.addEventListener('keydown', (e) => {
             const gate = document.getElementById('security-gate');
             if (gate && !gate.classList.contains('hidden')) return;
+
+            // Tasto ESC durante il gameplay: apre o chiude la finestra di conferma
+            if (e.code === 'Escape') {
+                if (this.state === 'PLAYING') {
+                    if (!this.isPaused) {
+                        this.isPaused = true;
+                        if (pauseModal) pauseModal.classList.remove('hidden');
+                    } else {
+                        resumeGame();
+                    }
+                    e.preventDefault();
+                    return;
+                }
+            }
+
+            if (this.isPaused) return;
 
             if (e.code === 'Space' || e.code === 'KeyX' || e.code === 'Enter') {
                 startTrigger();
@@ -275,6 +322,10 @@ class Game {
      * Aggiornamento logico e fisico
      */
     update(dt) {
+        if (this.isPaused) {
+            return;
+        }
+
         this.stateTimer += dt;
         this.parallax.update(dt);
         this.particles.update(dt);

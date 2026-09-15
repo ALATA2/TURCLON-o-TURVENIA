@@ -442,3 +442,14 @@ html, body {
         display: flex;
     }
 }
+
+/* Crediti a pié di pagina */
+.credits-small {
+    font-size: 0.75rem;
+    color: #8da4d0;
+    letter-spacing: 1.5px;
+    margin-top: 18px;
+    opacity: 0.85;
+    text-shadow: 0 0 8px rgba(0, 229, 255, 0.35);
+    font-weight: bold;
+}
