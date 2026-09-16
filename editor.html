@@ -51,9 +51,11 @@
 
             <div class="tool-group">
                 <label id="lbl-zoom">Zoom:</label>
-                <button id="btn-zoom-out" class="btn-editor">−</button>
+                <button id="btn-zoom-out" class="btn-editor" title="Zoom Out">−</button>
                 <span id="zoom-level">1x</span>
-                <button id="btn-zoom-in" class="btn-editor">+</button>
+                <button id="btn-zoom-in" class="btn-editor" title="Zoom In">+</button>
+                <button id="btn-fit-map" class="btn-editor" title="Fit Whole Map in View">Fit</button>
+                <button id="btn-focus-spawn" class="btn-editor" title="Center View on Player Spawn">Spawn</button>
             </div>
 
             <button id="btn-clear" class="btn-editor">Clear</button>
@@ -78,13 +80,23 @@
                 <p><strong id="tips-header">QUICK GUIDE:</strong></p>
                 <p id="tips-paint">• <strong>Left Click/Drag:</strong> Paint tile</p>
                 <p id="tips-erase">• <strong>Right Click:</strong> Erase tile</p>
-                <p id="tips-scroll">• <strong>Shift + Wheel:</strong> Horizontal scroll</p>
+                <p id="tips-scroll">• <strong>Middle Click / Space:</strong> Pan map</p>
             </div>
         </aside>
 
-        <!-- VIEWPORT CENTRALE CON CANVAS SCORREVOLE -->
+        <!-- VIEWPORT CENTRALE CON CANVAS VIRTUALE -->
         <main class="canvas-viewport" id="viewport">
             <canvas id="editor-canvas"></canvas>
+            
+            <!-- RADAR / MINIMAP OVERLAY -->
+            <div class="minimap-panel" id="minimap-panel" title="Click or drag to jump across map">
+                <div class="minimap-title">
+                    <span>SECTOR RADAR</span>
+                    <span id="minimap-coords">274x102</span>
+                </div>
+                <canvas id="minimap-canvas" width="220" height="82"></canvas>
+            </div>
+
             <div class="statusbar" id="statusbar">Col: 0, Row: 0 | Active Tool: Solid Block (1)</div>
         </main>
     </div>

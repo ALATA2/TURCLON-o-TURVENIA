@@ -75,9 +75,11 @@ export const TRANSLATIONS = {
         edTipsHeader: "QUICK GUIDE:",
         edTipsPaint: "• <strong>Left Click/Drag:</strong> Paint tile",
         edTipsErase: "• <strong>Right Click:</strong> Erase tile",
-        edTipsScroll: "• <strong>Middle Mouse Drag:</strong> Pan / Move around map<br>• <strong>Ctrl + Wheel:</strong> Zoom in / out",
+        edTipsScroll: "• <strong>Middle Click / Space + Drag:</strong> Pan map<br>• <strong>Ctrl + Wheel:</strong> Zoom in / out",
 
         // Palette Items
+        toolPanName: "Pan / Move View",
+        toolPanDesc: "Drag with left/middle click or Space to move",
         tileSolidName: "Solid Block",
         tileSolidDesc: "Armored impenetrable barrier",
         tilePlatformName: "Platform",
@@ -181,9 +183,11 @@ export const TRANSLATIONS = {
         edTipsHeader: "GUIDA VELOCE:",
         edTipsPaint: "• <strong>Click/Trascina Sx:</strong> Dipingi elemento",
         edTipsErase: "• <strong>Tasto Destro:</strong> Cancella blocco",
-        edTipsScroll: "• <strong>Tasto Centrale Mouse:</strong> Trascina per spostarti nella mappa<br>• <strong>Ctrl + Rotellina:</strong> Zoom avanti / indietro",
+        edTipsScroll: "• <strong>Tasto Centrale / Spazio + Drag:</strong> Sposta visuale<br>• <strong>Ctrl + Rotellina:</strong> Zoom avanti / indietro",
 
         // Palette Items
+        toolPanName: "Sposta Visuale (Pan)",
+        toolPanDesc: "Trascina con click centrale, sinistro o Spazio",
         tileSolidName: "Blocco Solido",
         tileSolidDesc: "Metallo corazzato invalicabile",
         tilePlatformName: "Piattaforma",
@@ -287,9 +291,11 @@ export const TRANSLATIONS = {
         edTipsHeader: "クイックガイド:",
         edTipsPaint: "• <strong>左クリック/ドラッグ:</strong> 配置",
         edTipsErase: "• <strong>右クリック:</strong> 削除",
-        edTipsScroll: "• <strong>ホイール中央ドラッグ:</strong> マップ内を自由に移動<br>• <strong>Ctrl + ホイール:</strong> ズームイン / アウト",
+        edTipsScroll: "• <strong>中央ボタンドラッグ / Space:</strong> 画面移動<br>• <strong>Ctrl + ホイール:</strong> ズームイン / アウト",
 
         // Palette Items
+        toolPanName: "画面移動 (パン)",
+        toolPanDesc: "中央または左ボタンドラッグでマップ移動",
         tileSolidName: "装甲ブロック",
         tileSolidDesc: "破壊不可の頑丈な金属ブロック",
         tilePlatformName: "通り抜け足場",
