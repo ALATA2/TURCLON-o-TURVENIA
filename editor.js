@@ -1,7 +1,8 @@
 /**
  * TURCLON - Level Lab Editor Logic
  * Editor visuale ottimizzato per mappe estese in stile Turrican (274x102 = 27.948 tile).
- * Include Viewport Culling ad alte prestazioni, zoom a 6 livelli, esportazione, autenticazione e i18n.
+ * Supporta zoom out panoramico fino a 0.125x, panning con tasto centrale del mouse,
+ * viewport culling ad alte prestazioni, zoom con Ctrl+Rotellina, esportazione e i18n.
  */
 
 import { TILE_TYPES, PALETTE } from './js/config.js';
@@ -35,11 +36,12 @@ class LevelEditor {
         this.rows = LEVEL_1.height;
         this.baseTileSize = 16;
 
-        // Livelli di zoom: 0.5x, 0.75x, 1x, 1.5x, 2x, 3x
-        this.zoomLevels = [0.5, 0.75, 1, 1.5, 2, 3];
-        this.zoomIndex = 2; // Default: 1x (indice 2)
+        // Livelli di zoom estesi per zoom out panoramico completo:
+        // 0.125x (2px/tile -> mappa intera 548x204px!), 0.2x, 0.25x, 0.35x, 0.5x, 0.75x, 1x, 1.5x, 2x, 3x, 4x
+        this.zoomLevels = [0.125, 0.2, 0.25, 0.35, 0.5, 0.75, 1, 1.5, 2, 3, 4];
+        this.zoomIndex = 6; // Default: 1x (indice 6)
         this.zoom = this.zoomLevels[this.zoomIndex];
-        this.tileSize = Math.round(this.baseTileSize * this.zoom);
+        this.tileSize = Math.max(2, Math.round(this.baseTileSize * this.zoom));
 
         // Matrice dati livello
         this.map = [];
@@ -48,6 +50,13 @@ class LevelEditor {
         this.selectedType = TILE_TYPES.SOLID;
         this.isPainting = false;
         this.paintButton = 0; // 0 = sinistro, 2 = destro
+
+        // Panning con tasto centrale del mouse
+        this.isPanning = false;
+        this.panStartX = 0;
+        this.panStartY = 0;
+        this.panStartScrollLeft = 0;
+        this.panStartScrollTop = 0;
 
         // Cursore mouse
         this.hoverCol = -1;
@@ -208,45 +217,117 @@ class LevelEditor {
      * Ridimensiona il canvas in base a zoom e dimensioni del livello
      */
     resizeCanvas() {
-        this.tileSize = Math.round(this.baseTileSize * this.zoom);
+        this.tileSize = Math.max(2, Math.round(this.baseTileSize * this.zoom));
         this.canvas.width = this.cols * this.tileSize;
         this.canvas.height = this.rows * this.tileSize;
+        document.getElementById('zoom-level').textContent = `${this.zoom}x`;
+        this.updateStatusBar();
         this.draw();
     }
 
+    zoomIn() {
+        if (this.zoomIndex < this.zoomLevels.length - 1) {
+            this.zoomIndex += 1;
+            this.zoom = this.zoomLevels[this.zoomIndex];
+            this.resizeCanvas();
+        }
+    }
+
+    zoomOut() {
+        if (this.zoomIndex > 0) {
+            this.zoomIndex -= 1;
+            this.zoom = this.zoomLevels[this.zoomIndex];
+            this.resizeCanvas();
+        }
+    }
+
     /**
-     * Registra gli ascoltatori eventi (mouse, tasti, zoom, scroll culling, modale)
+     * Registra gli ascoltatori eventi (mouse, tasti, zoom, scroll culling, panning tasto centrale)
      */
     setupEventListeners() {
         this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        // Previene il comportamento predefinito di autoscroll del tasto centrale
+        window.addEventListener('auxclick', (e) => {
+            if (e.button === 1) e.preventDefault();
+        });
 
         // Viewport Scroll: esegue culling istantaneo durante lo scrolling
         if (this.viewport) {
             this.viewport.addEventListener('scroll', () => {
                 this.draw();
             }, { passive: true });
+
+            // Zoom fluido con Ctrl + Rotellina
+            this.viewport.addEventListener('wheel', (e) => {
+                if (e.ctrlKey) {
+                    e.preventDefault();
+                    if (e.deltaY < 0) {
+                        this.zoomIn();
+                    } else {
+                        this.zoomOut();
+                    }
+                }
+            }, { passive: false });
         }
 
-        this.canvas.addEventListener('mousedown', (e) => {
+        // Gestione pressione tasti mouse (tasto sinistro, destro e CENTRALE)
+        const onMouseDown = (e) => {
             const gate = document.getElementById('security-gate');
             if (gate && !gate.classList.contains('hidden')) return;
 
-            this.isPainting = true;
-            this.paintButton = e.button;
-            this.applyPaintAtEvent(e);
-        });
+            // Tasto centrale premuto (e.button === 1) -> ATTIVA PANNING MAPPA
+            if (e.button === 1) {
+                e.preventDefault();
+                this.isPanning = true;
+                this.panStartX = e.clientX;
+                this.panStartY = e.clientY;
+                this.panStartScrollLeft = this.viewport ? this.viewport.scrollLeft : 0;
+                this.panStartScrollTop = this.viewport ? this.viewport.scrollTop : 0;
+                document.body.style.cursor = 'grabbing';
+                this.canvas.style.cursor = 'grabbing';
+                return;
+            }
 
-        window.addEventListener('mouseup', () => {
-            this.isPainting = false;
-        });
+            // Tasto sinistro (0) o destro (2) -> DIPINGI / CANCELLA
+            if (e.button === 0 || e.button === 2) {
+                this.isPainting = true;
+                this.paintButton = e.button;
+                this.applyPaintAtEvent(e);
+            }
+        };
 
-        this.canvas.addEventListener('mousemove', (e) => {
+        this.canvas.addEventListener('mousedown', onMouseDown);
+        if (this.viewport) {
+            this.viewport.addEventListener('mousedown', (e) => {
+                if (e.button === 1) onMouseDown(e);
+            });
+        }
+
+        // Movimento mouse su finestra per supportare trascinamento fluido
+        window.addEventListener('mousemove', (e) => {
+            // Se in panning con tasto centrale
+            if (this.isPanning && this.viewport) {
+                e.preventDefault();
+                const dx = e.clientX - this.panStartX;
+                const dy = e.clientY - this.panStartY;
+                this.viewport.scrollLeft = this.panStartScrollLeft - dx;
+                this.viewport.scrollTop = this.panStartScrollTop - dy;
+                return;
+            }
+
+            // Calcolo posizione tile per hovering e pittura
             const rect = this.canvas.getBoundingClientRect();
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
 
-            this.hoverCol = Math.floor(mouseX / this.tileSize);
-            this.hoverRow = Math.floor(mouseY / this.tileSize);
+            if (mouseX >= 0 && mouseX < this.canvas.width && mouseY >= 0 && mouseY < this.canvas.height) {
+                this.hoverCol = Math.floor(mouseX / this.tileSize);
+                this.hoverRow = Math.floor(mouseY / this.tileSize);
+            } else {
+                this.hoverCol = -1;
+                this.hoverRow = -1;
+            }
 
             this.updateStatusBar();
 
@@ -256,10 +337,22 @@ class LevelEditor {
             this.draw();
         });
 
+        // Rilascio tasti mouse
+        window.addEventListener('mouseup', (e) => {
+            if (e.button === 1 || this.isPanning) {
+                this.isPanning = false;
+                document.body.style.cursor = '';
+                this.canvas.style.cursor = 'crosshair';
+            }
+            this.isPainting = false;
+        });
+
         this.canvas.addEventListener('mouseleave', () => {
-            this.hoverCol = -1;
-            this.hoverRow = -1;
-            this.draw();
+            if (!this.isPanning) {
+                this.hoverCol = -1;
+                this.hoverRow = -1;
+                this.draw();
+            }
         });
 
         // Ridimensiona griglia
@@ -271,24 +364,9 @@ class LevelEditor {
             }
         });
 
-        // Zoom In / Out con array zoomLevels
-        document.getElementById('btn-zoom-in').addEventListener('click', () => {
-            if (this.zoomIndex < this.zoomLevels.length - 1) {
-                this.zoomIndex += 1;
-                this.zoom = this.zoomLevels[this.zoomIndex];
-                document.getElementById('zoom-level').textContent = `${this.zoom}x`;
-                this.resizeCanvas();
-            }
-        });
-
-        document.getElementById('btn-zoom-out').addEventListener('click', () => {
-            if (this.zoomIndex > 0) {
-                this.zoomIndex -= 1;
-                this.zoom = this.zoomLevels[this.zoomIndex];
-                document.getElementById('zoom-level').textContent = `${this.zoom}x`;
-                this.resizeCanvas();
-            }
-        });
+        // Pulsanti Zoom In / Out
+        document.getElementById('btn-zoom-in').addEventListener('click', () => this.zoomIn());
+        document.getElementById('btn-zoom-out').addEventListener('click', () => this.zoomOut());
 
         // Pulisci
         document.getElementById('btn-clear').addEventListener('click', () => {
@@ -298,7 +376,7 @@ class LevelEditor {
             }
         });
 
-        // Carica Livello 1 Default
+        // Carica Livello 1 Default (Turrican Scale 274x102)
         document.getElementById('btn-load-default').addEventListener('click', () => {
             if (confirm(i18n.get('confirmLoadDefault'))) {
                 this.cols = LEVEL_1.width;
@@ -476,7 +554,6 @@ class LevelEditor {
      * Rendering fluido a 60fps anche su 274x102 (27.948 tile).
      */
     draw() {
-        // Calcola l'intervallo di celle visibili nel viewport con margine di tolleranza
         const scrollLeft = this.viewport ? this.viewport.scrollLeft : 0;
         const scrollTop = this.viewport ? this.viewport.scrollTop : 0;
         const viewW = this.viewport ? this.viewport.clientWidth : this.canvas.width;
@@ -488,11 +565,11 @@ class LevelEditor {
         const startRow = Math.max(0, Math.floor(scrollTop / this.tileSize) - margin);
         const endRow = Math.min(this.rows - 1, Math.ceil((scrollTop + viewH) / this.tileSize) + margin);
 
-        // Pulisce l'area visibile
         const clearX = startCol * this.tileSize;
         const clearY = startRow * this.tileSize;
         const clearW = (endCol - startCol + 1) * this.tileSize;
         const clearH = (endRow - startRow + 1) * this.tileSize;
+
         this.ctx.fillStyle = '#080c16';
         this.ctx.fillRect(clearX, clearY, clearW, clearH);
 
@@ -508,68 +585,112 @@ class LevelEditor {
             }
         }
 
-        // 2. Griglia visibile
-        this.ctx.strokeStyle = '#18243c';
-        this.ctx.lineWidth = 1;
+        // 2. Griglia visibile (se tile >= 4px per non appesantire la vista a zoom out estremo)
+        if (this.tileSize >= 4) {
+            this.ctx.strokeStyle = '#18243c';
+            this.ctx.lineWidth = 1;
 
-        // Linee verticali
-        for (let c = startCol; c <= endCol + 1; c++) {
-            const x = c * this.tileSize;
-            this.ctx.beginPath();
-            this.ctx.moveTo(x, clearY);
-            this.ctx.lineTo(x, clearY + clearH);
-            if (c % 10 === 0) {
-                this.ctx.strokeStyle = '#2b3f66';
-                this.ctx.stroke();
-                this.ctx.strokeStyle = '#18243c';
-            } else {
-                this.ctx.stroke();
+            // Linee verticali
+            for (let c = startCol; c <= endCol + 1; c++) {
+                const x = c * this.tileSize;
+                this.ctx.beginPath();
+                this.ctx.moveTo(x, clearY);
+                this.ctx.lineTo(x, clearY + clearH);
+                if (c % 10 === 0) {
+                    this.ctx.strokeStyle = '#2b3f66';
+                    this.ctx.stroke();
+                    this.ctx.strokeStyle = '#18243c';
+                } else {
+                    this.ctx.stroke();
+                }
             }
-        }
 
-        // Linee orizzontali
-        for (let r = startRow; r <= endRow + 1; r++) {
-            const y = r * this.tileSize;
-            this.ctx.beginPath();
-            this.ctx.moveTo(clearX, y);
-            this.ctx.lineTo(clearX + clearW, y);
-            if (r % 10 === 0) {
-                this.ctx.strokeStyle = '#2b3f66';
-                this.ctx.stroke();
-                this.ctx.strokeStyle = '#18243c';
-            } else {
-                this.ctx.stroke();
+            // Linee orizzontali
+            for (let r = startRow; r <= endRow + 1; r++) {
+                const y = r * this.tileSize;
+                this.ctx.beginPath();
+                this.ctx.moveTo(clearX, y);
+                this.ctx.lineTo(clearX + clearW, y);
+                if (r % 10 === 0) {
+                    this.ctx.strokeStyle = '#2b3f66';
+                    this.ctx.stroke();
+                    this.ctx.strokeStyle = '#18243c';
+                } else {
+                    this.ctx.stroke();
+                }
             }
-        }
 
-        // 3. Numerazione colonne e righe di riferimento
-        this.ctx.fillStyle = '#657ea8';
-        this.ctx.font = `${Math.max(8, this.tileSize * 0.35)}px monospace`;
-        this.ctx.textAlign = 'center';
-        for (let c = startCol; c <= endCol; c++) {
-            if (c % 10 === 0 && startRow === 0) {
-                this.ctx.fillText(`${c}`, c * this.tileSize + this.tileSize * 0.5, 11);
+            // 3. Numerazione colonne e righe di riferimento
+            if (this.tileSize >= 8) {
+                this.ctx.fillStyle = '#657ea8';
+                this.ctx.font = `${Math.max(8, this.tileSize * 0.35)}px monospace`;
+                this.ctx.textAlign = 'center';
+                for (let c = startCol; c <= endCol; c++) {
+                    if (c % 10 === 0 && startRow === 0) {
+                        this.ctx.fillText(`${c}`, c * this.tileSize + this.tileSize * 0.5, 11);
+                    }
+                }
             }
         }
 
         // 4. Evidenziazione cursore attivo
-        if (this.hoverCol >= 0 && this.hoverCol < this.cols && this.hoverRow >= 0 && this.hoverRow < this.rows) {
+        if (this.hoverCol >= 0 && this.hoverCol < this.cols && this.hoverRow >= 0 && this.hoverRow < this.rows && !this.isPanning) {
             const hx = this.hoverCol * this.tileSize;
             const hy = this.hoverRow * this.tileSize;
 
             this.ctx.strokeStyle = PALETTE.CYBER_BLUE;
-            this.ctx.lineWidth = 2;
-            this.ctx.strokeRect(hx + 1, hy + 1, this.tileSize - 2, this.tileSize - 2);
+            this.ctx.lineWidth = Math.max(1, Math.round(this.zoom));
+            this.ctx.strokeRect(hx, hy, this.tileSize, this.tileSize);
         }
     }
 
     /**
-     * Disegna il singolo blocco ingrandito per l'editor
+     * Disegna il singolo blocco ingrandito o miniaturizzato a seconda del livello di zoom
      */
     drawTile(type, x, y) {
         const s = this.tileSize;
         const z = this.zoom;
 
+        // Se molto rimpicciolito (s <= 6), usa il fast-path a colore pieno per la massima nitidezza panoramica
+        if (s <= 6) {
+            switch (type) {
+                case TILE_TYPES.SOLID:
+                    this.ctx.fillStyle = PALETTE.STEEL_GRAY;
+                    this.ctx.fillRect(x, y, s, s);
+                    break;
+                case TILE_TYPES.PLATFORM:
+                    this.ctx.fillStyle = PALETTE.CYBER_BLUE;
+                    this.ctx.fillRect(x, y, s, Math.max(1, Math.round(s * 0.4)));
+                    break;
+                case TILE_TYPES.HAZARD:
+                    this.ctx.fillStyle = PALETTE.DANGER_RED;
+                    this.ctx.fillRect(x, y, s, s);
+                    break;
+                case TILE_TYPES.CRATE:
+                    this.ctx.fillStyle = '#a65b1c';
+                    this.ctx.fillRect(x, y, s, s);
+                    break;
+                case TILE_TYPES.SPAWN:
+                    this.ctx.fillStyle = PALETTE.CYBER_BLUE;
+                    this.ctx.fillRect(x, y, s, s);
+                    break;
+                case TILE_TYPES.ENEMY:
+                    this.ctx.fillStyle = PALETTE.HOT_PINK;
+                    this.ctx.fillRect(x, y, s, s);
+                    break;
+                case TILE_TYPES.GOAL:
+                    this.ctx.fillStyle = PALETTE.NEO_YELLOW;
+                    this.ctx.fillRect(x, y, s, s);
+                    break;
+                case TILE_TYPES.ENERGY:
+                    this.ctx.fillStyle = PALETTE.NEON_GREEN;
+                    this.ctx.fillRect(x, y, s, s);
+                    break;
+            }
+            return;
+        }
+
+        // Rendering dettagliato stile Neo-Geo per zoom normale o ravvicinato (s > 6)
         switch (type) {
             case TILE_TYPES.EMPTY:
                 break;

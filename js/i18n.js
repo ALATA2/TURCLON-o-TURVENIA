@@ -75,7 +75,7 @@ export const TRANSLATIONS = {
         edTipsHeader: "QUICK GUIDE:",
         edTipsPaint: "• <strong>Left Click/Drag:</strong> Paint tile",
         edTipsErase: "• <strong>Right Click:</strong> Erase tile",
-        edTipsScroll: "• <strong>Shift + Wheel:</strong> Horizontal scroll",
+        edTipsScroll: "• <strong>Middle Mouse Drag:</strong> Pan / Move around map<br>• <strong>Ctrl + Wheel:</strong> Zoom in / out",
 
         // Palette Items
         tileSolidName: "Solid Block",
@@ -181,7 +181,7 @@ export const TRANSLATIONS = {
         edTipsHeader: "GUIDA VELOCE:",
         edTipsPaint: "• <strong>Click/Trascina Sx:</strong> Dipingi elemento",
         edTipsErase: "• <strong>Tasto Destro:</strong> Cancella blocco",
-        edTipsScroll: "• <strong>Shift + Rotellina:</strong> Scorrimento orizzontale",
+        edTipsScroll: "• <strong>Tasto Centrale Mouse:</strong> Trascina per spostarti nella mappa<br>• <strong>Ctrl + Rotellina:</strong> Zoom avanti / indietro",
 
         // Palette Items
         tileSolidName: "Blocco Solido",
@@ -287,7 +287,7 @@ export const TRANSLATIONS = {
         edTipsHeader: "クイックガイド:",
         edTipsPaint: "• <strong>左クリック/ドラッグ:</strong> 配置",
         edTipsErase: "• <strong>右クリック:</strong> 削除",
-        edTipsScroll: "• <strong>Shift + ホイール:</strong> 左右スクロール",
+        edTipsScroll: "• <strong>ホイール中央ドラッグ:</strong> マップ内を自由に移動<br>• <strong>Ctrl + ホイール:</strong> ズームイン / アウト",
 
         // Palette Items
         tileSolidName: "装甲ブロック",
