@@ -75,19 +75,20 @@ class LevelEditor {
         this.hoverCol = -1;
         this.hoverRow = -1;
 
-        // Security Clearance Gate
+        // 1. Carica prima la mappa, localizzazione ed interfaccia
+        this.init();
+
+        // 2. Inizializza AuthGate SOLO dopo che la mappa e l'editor sono completamente pronti
         this.authGate = new AuthGate(() => {
             console.log("Accesso autorizzato all'Editor // TURCLON Level Lab");
             this.resizeCanvas();
             this.focusSpawn();
         });
-
-        this.init();
     }
 
     init() {
-        this.initI18n();
         this.loadInitialLevel();
+        this.initI18n();
         this.renderPaletteUI();
         this.setupEventListeners();
         this.resizeCanvas();
@@ -776,13 +777,16 @@ class LevelEditor {
         const endRow = Math.min(this.rows - 1, Math.ceil((this.cameraY + H) / tileSize));
 
         // 1. Disegna i blocchi visibili
-        for (let r = startRow; r <= endRow; r++) {
-            for (let c = startCol; c <= endCol; c++) {
-                const type = this.map[r][c];
-                if (type === TILE_TYPES.EMPTY) continue;
-                const sx = c * tileSize - this.cameraX;
-                const sy = r * tileSize - this.cameraY;
-                this.drawTile(type, sx, sy, tileSize);
+        if (this.map && this.map.length > 0) {
+            for (let r = startRow; r <= endRow; r++) {
+                if (!this.map[r]) continue;
+                for (let c = startCol; c <= endCol; c++) {
+                    const type = this.map[r][c];
+                    if (type === undefined || type === TILE_TYPES.EMPTY) continue;
+                    const sx = c * tileSize - this.cameraX;
+                    const sy = r * tileSize - this.cameraY;
+                    this.drawTile(type, sx, sy, tileSize);
+                }
             }
         }
 
@@ -858,14 +862,17 @@ class LevelEditor {
         mctx.fillStyle = '#040711';
         mctx.fillRect(0, 0, mw, mh);
 
+        if (!this.map || this.map.length === 0) return;
+
         const scaleX = mw / this.cols;
         const scaleY = mh / this.rows;
 
         // Disegna tutti i blocchi presenti
         for (let r = 0; r < this.rows; r++) {
+            if (!this.map[r]) continue;
             for (let c = 0; c < this.cols; c++) {
                 const type = this.map[r][c];
-                if (type === TILE_TYPES.EMPTY) continue;
+                if (type === undefined || type === TILE_TYPES.EMPTY) continue;
 
                 switch (type) {
                     case TILE_TYPES.SOLID: mctx.fillStyle = '#425578'; break;
