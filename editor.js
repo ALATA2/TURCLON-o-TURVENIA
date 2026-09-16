@@ -785,7 +785,7 @@ class LevelEditor {
                     if (type === undefined || type === TILE_TYPES.EMPTY) continue;
                     const sx = c * tileSize - this.cameraX;
                     const sy = r * tileSize - this.cameraY;
-                    this.drawTile(type, sx, sy, tileSize);
+                    this.drawTile(type, sx, sy, tileSize, c, r);
                 }
             }
         }
@@ -912,7 +912,7 @@ class LevelEditor {
     /**
      * Disegna il singolo blocco ingrandito o miniaturizzato
      */
-    drawTile(type, x, y, s) {
+    drawTile(type, x, y, s, c = 0, r = 0) {
         const z = this.zoom;
 
         // Se molto piccolo (s <= 6), usa colori pieni per nitidezza e prestazioni assolute
@@ -959,28 +959,88 @@ class LevelEditor {
             case TILE_TYPES.EMPTY:
                 break;
 
-            case TILE_TYPES.SOLID:
+            case TILE_TYPES.SOLID: {
+                const isSolidOrCrate = (col, row) => {
+                    if (col < 0 || col >= this.cols) return true;
+                    if (row < 0) return true;
+                    if (row >= this.rows) return false;
+                    const t = this.map[row] ? this.map[row][col] : TILE_TYPES.EMPTY;
+                    return t === TILE_TYPES.SOLID || t === TILE_TYPES.CRATE;
+                };
+
+                const topOpen = !isSolidOrCrate(c, r - 1);
+                const bottomOpen = !isSolidOrCrate(c, r + 1);
+                const leftOpen = !isSolidOrCrate(c - 1, r);
+                const rightOpen = !isSolidOrCrate(c + 1, r);
+
+                // Blocco interno
+                if (!topOpen && !bottomOpen && !leftOpen && !rightOpen) {
+                    this.ctx.fillStyle = '#182236';
+                    this.ctx.fillRect(x, y, s, s);
+                    this.ctx.fillStyle = '#111827';
+                    this.ctx.fillRect(x, y, s, 1);
+                    this.ctx.fillRect(x, y, 1, s);
+                    if ((c + r) % 2 === 0 && s >= 12) {
+                        this.ctx.fillStyle = '#22304d';
+                        this.ctx.fillRect(x + Math.round(s * 0.25), y + Math.round(s * 0.25), Math.round(s * 0.5), Math.round(s * 0.5));
+                        this.ctx.fillStyle = '#182236';
+                        this.ctx.fillRect(x + Math.round(s * 0.3), y + Math.round(s * 0.3), Math.round(s * 0.4), Math.round(s * 0.4));
+                    }
+                    break;
+                }
+
+                // Blocco con facce esterne
                 this.ctx.fillStyle = PALETTE.STEEL_GRAY;
                 this.ctx.fillRect(x, y, s, s);
-                this.ctx.fillStyle = PALETTE.STEEL_LIGHT;
-                this.ctx.fillRect(x, y, s, Math.max(1, 2 * z));
-                this.ctx.fillRect(x, y, Math.max(1, 2 * z), s);
-                this.ctx.fillStyle = PALETTE.DARK_NAVY;
-                this.ctx.fillRect(x, y + s - Math.max(1, 2 * z), s, Math.max(1, 2 * z));
-                this.ctx.fillRect(x + s - Math.max(1, 2 * z), y, Math.max(1, 2 * z), s);
-                if (z >= 1) {
-                    this.ctx.fillStyle = PALETTE.STEEL_HIGHLIGHT;
-                    this.ctx.fillRect(x + 2 * z, y + 2 * z, 2 * z, 2 * z);
-                    this.ctx.fillRect(x + s - 4 * z, y + 2 * z, 2 * z, 2 * z);
+
+                if (topOpen) {
+                    this.ctx.fillStyle = '#eaf4ff';
+                    this.ctx.fillRect(x, y, s, 1);
+                    this.ctx.fillStyle = '#53688e';
+                    this.ctx.fillRect(x, y + 1, s, Math.max(1, Math.round(3 * z)));
+                    this.ctx.fillStyle = '#2d3b54';
+                    for (let px = 1; px < s; px += Math.max(2, Math.round(3 * z))) {
+                        this.ctx.fillRect(x + px, y + 1, 1, Math.max(1, Math.round(3 * z)));
+                    }
+                    this.ctx.fillStyle = '#1e293e';
+                    this.ctx.fillRect(x, y + 1 + Math.max(1, Math.round(3 * z)), s, 1);
+                } else {
+                    this.ctx.fillStyle = '#1b2438';
+                    this.ctx.fillRect(x, y, s, 1);
+                }
+
+                if (leftOpen) {
+                    this.ctx.fillStyle = PALETTE.STEEL_LIGHT;
+                    this.ctx.fillRect(x, y, Math.max(1, Math.round(2 * z)), s);
+                }
+                if (rightOpen) {
+                    this.ctx.fillStyle = PALETTE.DARK_NAVY;
+                    this.ctx.fillRect(x + s - Math.max(1, Math.round(2 * z)), y, Math.max(1, Math.round(2 * z)), s);
+                }
+                if (bottomOpen) {
+                    this.ctx.fillStyle = '#0a0e1a';
+                    this.ctx.fillRect(x, y + s - Math.max(1, Math.round(2 * z)), s, Math.max(1, Math.round(2 * z)));
+                }
+                if (topOpen && leftOpen) {
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.fillRect(x, y, Math.max(2, Math.round(2 * z)), Math.max(2, Math.round(2 * z)));
+                }
+                if (topOpen && rightOpen) {
+                    this.ctx.fillStyle = '#c5d8f7';
+                    this.ctx.fillRect(x + s - Math.max(2, Math.round(2 * z)), y, Math.max(2, Math.round(2 * z)), Math.max(2, Math.round(2 * z)));
                 }
                 break;
+            }
 
-            case TILE_TYPES.PLATFORM:
-                this.ctx.fillStyle = PALETTE.STEEL_LIGHT;
-                this.ctx.fillRect(x, y, s, Math.max(2, 4 * z));
+            case TILE_TYPES.PLATFORM: {
+                this.ctx.fillStyle = '#1c2842';
+                this.ctx.fillRect(x, y, s, Math.max(2, Math.round(4 * z)));
                 this.ctx.fillStyle = PALETTE.CYBER_BLUE;
-                this.ctx.fillRect(x, y, s, Math.max(1, 1 * z));
+                this.ctx.fillRect(x, y, s, Math.max(1, Math.round(1 * z)));
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.fillRect(x + 2, y, s - 4, 1);
                 break;
+            }
 
             case TILE_TYPES.HAZARD:
                 this.ctx.fillStyle = PALETTE.DANGER_RED;

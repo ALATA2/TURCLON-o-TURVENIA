@@ -34,6 +34,19 @@ export const TRANSLATIONS = {
         btnStart: "TAP OR PRESS SPACE TO START",
         btnEditor: "OPEN LEVEL EDITOR",
 
+        // Arcade Title Menu
+        menuStart: "▶ START MISSION",
+        menuHowToPlay: "⚙ HOW TO PLAY",
+        menuEditor: "🛠 LEVEL LAB",
+        menuAudio: "AUDIO: ",
+        audioOn: "ON",
+        audioOff: "OFF",
+        insertCoin: "CREDITS: 01 // PRESS START",
+        creditsArcade: "© 2026 MICHELE & DANIELE // ALL RIGHTS RESERVED",
+        howToPlayTitle: "TACTICAL MANUAL",
+        howToPlayClose: "CLOSE MANUAL",
+        wpnPlasma: "PLASMA BLASTER",
+
         // Game Over
         gameOverTitle: "MISSION FAILED",
         gameOverSubtitle: "ALL LIVES EXHAUSTED",
@@ -142,6 +155,19 @@ export const TRANSLATIONS = {
         btnStart: "TOCCA O PREMI SPAZIO PER INIZIARE",
         btnEditor: "APRI EDITOR LIVELLI",
 
+        // Arcade Title Menu
+        menuStart: "▶ INIZIA MISSIONE",
+        menuHowToPlay: "⚙ COME GIOCARE",
+        menuEditor: "🛠 LEVEL LAB",
+        menuAudio: "AUDIO: ",
+        audioOn: "ON",
+        audioOff: "OFF",
+        insertCoin: "CREDITI: 01 // PREMI START",
+        creditsArcade: "© 2026 MICHELE & DANIELE // TUTTI I DIRITTI RISERVATI",
+        howToPlayTitle: "MANUALE OPERATIVO",
+        howToPlayClose: "CHIUDI MANUALE",
+        wpnPlasma: "BLASTER AL PLASMA",
+
         // Game Over
         gameOverTitle: "MISSION FAILED",
         gameOverSubtitle: "TUTTE LE VITE SONO ESAURITE",
@@ -249,6 +275,19 @@ export const TRANSLATIONS = {
         controlsMobileDesc: "左: 仮想D-Pad | 右: ジャンプ (A) & 射撃 (B)",
         btnStart: "画面タップ または スペースでスタート",
         btnEditor: "ステージエディタを開く",
+
+        // Arcade Title Menu
+        menuStart: "▶ 作戦開始",
+        menuHowToPlay: "⚙ 操作方法",
+        menuEditor: "🛠 ステージエディタ",
+        menuAudio: "音効: ",
+        audioOn: "ON",
+        audioOff: "OFF",
+        insertCoin: "クレジット: 01 // STARTを押してください",
+        creditsArcade: "© 2026 MICHELE & DANIELE // 無断転載を禁じます",
+        howToPlayTitle: "作戦マニュアル",
+        howToPlayClose: "マニュアルを閉じる",
+        wpnPlasma: "プラズマブラスター",
 
         // Game Over
         gameOverTitle: "作戦失敗",

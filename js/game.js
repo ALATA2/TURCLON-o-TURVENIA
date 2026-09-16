@@ -31,6 +31,8 @@ class Game {
 
         // Telecamera di gioco 2D (con supporto scrolling verticale e orizzontale)
         this.camera = { x: 0, y: 0 };
+        this.shakeTimer = 0;
+        this.shakeMagnitude = 0;
 
         // Entità
         this.player = null;
@@ -100,9 +102,18 @@ class Game {
         setHtml('ctrl-esc', 'controlsEsc');
         setHtml('ctrl-mobile-header', 'controlsMobileHeader');
         setTxt('ctrl-mobile-desc', 'controlsMobileDesc');
-        setTxt('btn-start', 'btnStart');
-        setTxt('btn-open-editor', 'btnEditor');
-        setTxt('credits-text', 'creditsText');
+        setTxt('btn-start', 'menuStart');
+        setTxt('btn-how-to-play', 'menuHowToPlay');
+        setTxt('btn-open-editor', 'menuEditor');
+        const audioBtn = document.getElementById('btn-toggle-audio');
+        if (audioBtn) {
+            const status = audio.enabled ? i18n.get('audioOn') : i18n.get('audioOff');
+            audioBtn.textContent = `${i18n.get('menuAudio')}${status}`;
+        }
+        setTxt('arcade-coin-text', 'insertCoin');
+        setTxt('credits-text', 'creditsArcade');
+        setTxt('manual-title', 'howToPlayTitle');
+        setTxt('btn-dismiss-manual', 'howToPlayClose');
 
         // Modale di conferma uscita / pausa
         setTxt('pause-title', 'confirmExitTitle');
@@ -150,16 +161,70 @@ class Game {
             const gate = document.getElementById('security-gate');
             if (gate && !gate.classList.contains('hidden')) return;
 
+            const howToPlayModal = document.getElementById('how-to-play-modal');
+            if (howToPlayModal && !howToPlayModal.classList.contains('hidden')) return;
+
             if (this.state === 'START') {
                 audio.init();
+                audio.playConfirm();
                 this.state = 'PLAYING';
                 document.getElementById('start-overlay').classList.add('hidden');
             } else if (this.state === 'GAME_OVER') {
+                audio.playConfirm();
                 this.restartGame();
             } else if (this.state === 'STAGE_CLEAR') {
+                audio.playConfirm();
                 this.restartGame();
             }
         };
+
+        // Pulsanti del menu principale Arcade
+        const btnStart = document.getElementById('btn-start');
+        const btnHowToPlay = document.getElementById('btn-how-to-play');
+        const btnToggleAudio = document.getElementById('btn-toggle-audio');
+        const howToPlayModal = document.getElementById('how-to-play-modal');
+        const btnCloseManual = document.getElementById('btn-close-manual');
+        const btnDismissManual = document.getElementById('btn-dismiss-manual');
+        const btnOpenEd = document.getElementById('btn-open-editor');
+
+        if (btnStart) {
+            btnStart.addEventListener('mouseenter', () => audio.playSelect());
+            btnStart.addEventListener('click', (e) => {
+                e.stopPropagation();
+                startTrigger();
+            });
+        }
+
+        if (btnHowToPlay) {
+            btnHowToPlay.addEventListener('mouseenter', () => audio.playSelect());
+            btnHowToPlay.addEventListener('click', (e) => {
+                e.stopPropagation();
+                audio.playSelect();
+                if (howToPlayModal) howToPlayModal.classList.remove('hidden');
+            });
+        }
+
+        const closeManual = (e) => {
+            if (e) e.stopPropagation();
+            audio.playSelect();
+            if (howToPlayModal) howToPlayModal.classList.add('hidden');
+        };
+        if (btnCloseManual) btnCloseManual.addEventListener('click', closeManual);
+        if (btnDismissManual) btnDismissManual.addEventListener('click', closeManual);
+
+        if (btnToggleAudio) {
+            btnToggleAudio.addEventListener('mouseenter', () => audio.playSelect());
+            btnToggleAudio.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const enabled = audio.toggleAudio();
+                const status = enabled ? i18n.get('audioOn') : i18n.get('audioOff');
+                btnToggleAudio.textContent = `${i18n.get('menuAudio')}${status}`;
+            });
+        }
+
+        if (btnOpenEd) {
+            btnOpenEd.addEventListener('mouseenter', () => audio.playSelect());
+        }
 
         // Gestione finestra di conferma pausa / uscita (tasto ESC)
         const pauseModal = document.getElementById('pause-modal');
@@ -208,11 +273,20 @@ class Game {
             }
         });
 
-        document.getElementById('start-overlay').addEventListener('click', startTrigger);
-        document.getElementById('game-container').addEventListener('touchstart', startTrigger, { passive: true });
+        // Pulsanti Game Over e Victory
+        document.getElementById('btn-retry')?.addEventListener('click', () => this.restartGame());
+        document.getElementById('btn-play-again')?.addEventListener('click', () => this.restartGame());
 
         // Avvio game loop
         requestAnimationFrame((t) => this.loop(t));
+    }
+
+    /**
+     * Attiva micro-vibrazione telecamera (Screen Shake) per feedback visivo d'impatto
+     */
+    triggerScreenShake(duration = 0.22, magnitude = 3.5) {
+        this.shakeTimer = duration;
+        this.shakeMagnitude = magnitude;
     }
 
     /**
@@ -459,22 +533,33 @@ class Game {
     render() {
         this.ctx.clearRect(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
 
-        // 1. Disegna sfondo con Parallasse 2D
-        this.parallax.draw(this.ctx, this.camera.x, this.camera.y);
+        // Calcolo micro-vibrazione telecamera (Screen Shake)
+        let shakeX = 0, shakeY = 0;
+        if (this.shakeTimer > 0) {
+            const intensity = (this.shakeTimer / 0.22) * this.shakeMagnitude;
+            shakeX = Math.round((Math.random() - 0.5) * intensity * 2);
+            shakeY = Math.round((Math.random() - 0.5) * intensity * 2);
+        }
 
-        // 2. Disegna Tilemap con Viewport Culling
-        this.tilemap.draw(this.ctx, this.camera.x, this.camera.y, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
+        const viewX = this.camera.x + shakeX;
+        const viewY = this.camera.y + shakeY;
+
+        // 1. Disegna sfondo con Parallasse 2D
+        this.parallax.draw(this.ctx, viewX, viewY);
+
+        // 2. Disegna Tilemap con Autotiling e Viewport Culling
+        this.tilemap.draw(this.ctx, viewX, viewY, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
 
         // 3. Disegna Traguardo
         if (this.goal) {
-            this.goal.draw(this.ctx, this.camera.x, this.camera.y);
+            this.goal.draw(this.ctx, viewX, viewY);
         }
 
         // 4. Disegna Capsule energetiche
         for (const item of this.energyPickups) {
             if (!item.collected) {
-                const sx = Math.round(item.x - this.camera.x);
-                const sy = Math.round(item.y - this.camera.y);
+                const sx = Math.round(item.x - viewX);
+                const sy = Math.round(item.y - viewY);
                 this.ctx.fillStyle = PALETTE.NEON_GREEN;
                 this.ctx.fillRect(sx, sy, 8, 8);
                 this.ctx.fillStyle = '#ffffff';
@@ -485,40 +570,40 @@ class Game {
 
         // 5. Disegna Nemici
         for (const e of this.enemies) {
-            e.draw(this.ctx, this.camera.x, this.camera.y);
+            e.draw(this.ctx, viewX, viewY);
         }
 
         // 6. Disegna Giocatore
         if (this.player && this.state !== 'STAGE_CLEAR') {
-            this.player.draw(this.ctx, this.camera.x, this.camera.y);
+            this.player.draw(this.ctx, viewX, viewY);
         }
 
         // 7. Disegna Proiettili
         for (const b of this.bullets) {
-            b.draw(this.ctx, this.camera.x, this.camera.y);
+            b.draw(this.ctx, viewX, viewY);
         }
 
-        // 8. Disegna Particelle e Popups di punteggio
-        this.particles.draw(this.ctx, this.camera.x, this.camera.y);
+        // 8. Disegna Particelle, Bossoli e Popups di punteggio
+        this.particles.draw(this.ctx, viewX, viewY);
 
         // 9. ILLUMINAZIONE DINAMICA HI-BIT (Neon Glow / Bloom pass)
-        this.drawDynamicLights();
+        this.drawDynamicLights(viewX, viewY);
 
-        // 10. HUD Arcade 16-Bit
+        // 10. HUD Arcade 16-Bit Neo-Geo Cockpit
         this.drawHUD();
     }
 
     /**
      * Pass di Illuminazione Dinamica 2D Hi-Bit (Neon Glow per proiettili, portale ed energia)
      */
-    drawDynamicLights() {
+    drawDynamicLights(viewX = this.camera.x, viewY = this.camera.y) {
         this.ctx.save();
         this.ctx.globalCompositeOperation = 'lighter';
 
         // Alone luminoso attorno ai proiettili al plasma
         for (const b of this.bullets) {
-            const bx = Math.round(b.x + b.width * 0.5 - this.camera.x);
-            const by = Math.round(b.y + b.height * 0.5 - this.camera.y);
+            const bx = Math.round(b.x + b.width * 0.5 - viewX);
+            const by = Math.round(b.y + b.height * 0.5 - viewY);
             if (bx > -30 && bx < VIRTUAL_WIDTH + 30 && by > -30 && by < VIRTUAL_HEIGHT + 30) {
                 const grad = this.ctx.createRadialGradient(bx, by, 2, bx, by, 26);
                 grad.addColorStop(0, 'rgba(0, 229, 255, 0.4)');
@@ -533,8 +618,8 @@ class Game {
 
         // Luce d'ambiente e visore del giocatore
         if (this.player && this.state !== 'STAGE_CLEAR') {
-            const px = Math.round(this.player.x + this.player.width * 0.5 - this.camera.x);
-            const py = Math.round(this.player.y + this.player.height * 0.5 - this.camera.y);
+            const px = Math.round(this.player.x + this.player.width * 0.5 - viewX);
+            const py = Math.round(this.player.y + this.player.height * 0.5 - viewY);
             const pGrad = this.ctx.createRadialGradient(px, py, 4, px, py, 34);
             pGrad.addColorStop(0, 'rgba(0, 229, 255, 0.22)');
             pGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
@@ -559,8 +644,8 @@ class Game {
 
         // Alone vortice del Portale Warp Gate
         if (this.goal) {
-            const gx = Math.round(this.goal.x + this.goal.width * 0.5 - this.camera.x);
-            const gy = Math.round(this.goal.y + this.goal.height * 0.5 - this.camera.y);
+            const gx = Math.round(this.goal.x + this.goal.width * 0.5 - viewX);
+            const gy = Math.round(this.goal.y + this.goal.height * 0.5 - viewY);
             if (gx > -60 && gx < VIRTUAL_WIDTH + 60 && gy > -60 && gy < VIRTUAL_HEIGHT + 60) {
                 const gGrad = this.ctx.createRadialGradient(gx, gy, 6, gx, gy, 55);
                 gGrad.addColorStop(0, 'rgba(255, 230, 0, 0.45)');
@@ -576,8 +661,8 @@ class Game {
         // Bagliore verde delle capsule energetiche
         for (const item of this.energyPickups) {
             if (!item.collected) {
-                const ix = Math.round(item.x + 4 - this.camera.x);
-                const iy = Math.round(item.y + 4 - this.camera.y);
+                const ix = Math.round(item.x + 4 - viewX);
+                const iy = Math.round(item.y + 4 - viewY);
                 if (ix > -20 && ix < VIRTUAL_WIDTH + 20 && iy > -20 && iy < VIRTUAL_HEIGHT + 20) {
                     const iGrad = this.ctx.createRadialGradient(ix, iy, 2, ix, iy, 18);
                     iGrad.addColorStop(0, 'rgba(57, 255, 20, 0.35)');
@@ -594,45 +679,101 @@ class Game {
     }
 
     /**
-     * Disegna l'HUD arcade Neo-Geo (Health bar segmentata, Vite, Punti)
+     * Disegna l'HUD cockpit professionale stile Neo-Geo Arcade (Health bar LED segmentata, elmi vite, score)
      */
     drawHUD() {
         this.ctx.save();
 
-        // Barra nera semi-trasparente in alto per l'HUD
-        this.ctx.fillStyle = 'rgba(10, 13, 26, 0.75)';
-        this.ctx.fillRect(0, 0, VIRTUAL_WIDTH, 14);
+        const W = VIRTUAL_WIDTH;
+        const hudH = 15;
+
+        // 1. Cornice molded cockpit in metallo scuro
+        const grad = this.ctx.createLinearGradient(0, 0, 0, hudH);
+        grad.addColorStop(0, 'rgba(10, 15, 28, 0.95)');
+        grad.addColorStop(0.7, 'rgba(16, 23, 42, 0.92)');
+        grad.addColorStop(1, 'rgba(6, 9, 18, 0.98)');
+        this.ctx.fillStyle = grad;
+        this.ctx.fillRect(0, 0, W, hudH);
+
+        // Bordo inferiore sagomato con luce ciano zenitale
+        this.ctx.fillStyle = '#223456';
+        this.ctx.fillRect(0, hudH - 1, W, 1);
         this.ctx.fillStyle = PALETTE.CYBER_BLUE;
-        this.ctx.fillRect(0, 14, VIRTUAL_WIDTH, 1);
+        this.ctx.fillRect(0, hudH, W, 1);
 
-        // SEGMENTI VITA (HEALTH)
-        this.ctx.fillStyle = '#ffffff';
-        this.ctx.font = 'bold 8px monospace';
+        // Rivetti d'angolo metallici
+        this.ctx.fillStyle = '#61789e';
+        this.ctx.fillRect(3, 3, 2, 2);
+        this.ctx.fillRect(W - 5, 3, 2, 2);
+
+        // 2. SEZIONE ENERGIA / LIFE (Segmented LED Gauge)
+        this.ctx.font = 'bold 7px "Press Start 2P", monospace';
         this.ctx.textAlign = 'left';
-        const lifeLabel = i18n.get('hudLife');
-        this.ctx.fillText(lifeLabel, 6, 10);
+        this.ctx.fillStyle = '#a6c2f0';
+        this.ctx.fillText('LIFE', 8, 11);
 
-        const lifeOffset = 6 + this.ctx.measureText(lifeLabel).width + 3;
+        const barStartX = 42;
+        const maxHp = this.player.maxHp || 4;
+        const curHp = this.player.hp || 0;
 
-        for (let i = 0; i < this.player.maxHp; i++) {
-            const bx = lifeOffset + i * 8;
-            if (i < this.player.hp) {
-                this.ctx.fillStyle = (this.player.hp <= 1) ? PALETTE.DANGER_RED : (this.player.hp <= 2 ? PALETTE.NEO_YELLOW : PALETTE.CYBER_BLUE);
+        // Cornice LED display
+        this.ctx.fillStyle = '#060a14';
+        this.ctx.fillRect(barStartX - 2, 3, maxHp * 8 + 3, 9);
+        this.ctx.strokeStyle = '#1e2e4a';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(barStartX - 2, 3, maxHp * 8 + 3, 9);
+
+        // Segmenti LED
+        for (let i = 0; i < maxHp; i++) {
+            const bx = barStartX + i * 8;
+            if (i < curHp) {
+                let cellColor = '#00e5ff'; // Ciano pieno
+                if (curHp <= 1) {
+                    const blink = Math.sin(Date.now() * 0.015) > 0;
+                    cellColor = blink ? '#ff1744' : '#66091b';
+                } else if (curHp <= 2) {
+                    cellColor = '#ffe600'; // Giallo allerta
+                }
+                this.ctx.fillStyle = cellColor;
+                this.ctx.fillRect(bx, 5, 6, 5);
+
+                // Riflesso brillante superiore del LED
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.fillRect(bx + 1, 5, 4, 1);
             } else {
-                this.ctx.fillStyle = '#1c2438';
+                this.ctx.fillStyle = '#0f1726';
+                this.ctx.fillRect(bx, 5, 6, 5);
             }
-            this.ctx.fillRect(bx, 4, 6, 7);
         }
 
-        // VITE (LIVES)
-        this.ctx.fillStyle = PALETTE.NEO_YELLOW;
-        this.ctx.fillText(`${i18n.get('hudLives')} ${this.player.lives}`, lifeOffset + this.player.maxHp * 8 + 12, 10);
+        // 3. SEZIONE VITE (Miniature elmetto cyborg)
+        const livesStartX = barStartX + maxHp * 8 + 12;
+        for (let l = 0; l < this.player.lives; l++) {
+            const hx = livesStartX + l * 9;
+            this.ctx.fillStyle = '#5c6f91';
+            this.ctx.fillRect(hx, 4, 6, 6);
+            this.ctx.fillStyle = '#00e5ff';
+            this.ctx.fillRect(hx + 2, 6, 4, 2);
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.fillRect(hx + 3, 6, 1, 1);
+        }
 
-        // PUNTEGGIO (SCORE)
-        const scoreStr = String(this.player.score).padStart(6, '0');
-        this.ctx.fillStyle = '#ffffff';
+        // 4. SEZIONE ARMA CENTRALE
+        this.ctx.fillStyle = '#566f96';
+        this.ctx.font = '6px "Press Start 2P", monospace';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('PLASMA', W * 0.54, 11);
+
+        // 5. SEZIONE PUNTEGGIO / SCORE (Display dorato arcade a cifre fisse)
+        const scoreStr = String(this.player.score || 0).padStart(6, '0');
         this.ctx.textAlign = 'right';
-        this.ctx.fillText(`${i18n.get('hudScore')}${scoreStr}`, VIRTUAL_WIDTH - 6, 10);
+        this.ctx.fillStyle = '#ffd700';
+        this.ctx.font = 'bold 7px "Press Start 2P", monospace';
+        this.ctx.fillText(`${scoreStr}`, W - 8, 11);
+
+        this.ctx.fillStyle = '#556a8e';
+        this.ctx.font = '6px "Press Start 2P", monospace';
+        this.ctx.fillText('PTS', W - 62, 11);
 
         this.ctx.restore();
     }

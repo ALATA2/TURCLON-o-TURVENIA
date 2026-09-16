@@ -98,48 +98,122 @@ export class Tilemap {
 
         switch (type) {
             case TILE_TYPES.SOLID: {
-                // Piastra metallica cybercorazzata Neo-Geo
+                // Rilevamento vicini per Autotiling organico stile Neo-Geo / Turrican
+                const isSolidOrCrate = (c, r) => {
+                    if (c < 0 || c >= this.width) return true; // Confine laterale solido
+                    if (r < 0) return true;                     // Soffitto solido
+                    if (r >= this.height) return false;
+                    const t = this.tiles[r][c];
+                    return t === TILE_TYPES.SOLID || t === TILE_TYPES.CRATE;
+                };
+
+                const topOpen = !isSolidOrCrate(col, row - 1);
+                const bottomOpen = !isSolidOrCrate(col, row + 1);
+                const leftOpen = !isSolidOrCrate(col - 1, row);
+                const rightOpen = !isSolidOrCrate(col + 1, row);
+
+                // --- 1. BLOCCO INTERNO (NON ESPOSTO ALL'ARIA) ---
+                if (!topOpen && !bottomOpen && !leftOpen && !rightOpen) {
+                    // Tonalità più scura e pulita per dare profondità e contrasto al livello
+                    ctx.fillStyle = '#182236';
+                    ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+
+                    // Giunzioni piastra metallica interna
+                    ctx.fillStyle = '#111827';
+                    ctx.fillRect(x, y, TILE_SIZE, 1);
+                    ctx.fillRect(x, y, 1, TILE_SIZE);
+
+                    // Texture rinforzo diagonale sottile e discreta solo ogni 2 tile
+                    if ((col + row) % 2 === 0) {
+                        ctx.fillStyle = '#22304d';
+                        ctx.fillRect(x + 4, y + 4, 8, 8);
+                        ctx.fillStyle = '#182236';
+                        ctx.fillRect(x + 5, y + 5, 6, 6);
+                    }
+                    break;
+                }
+
+                // --- 2. BLOCCO DI SUPERFICIE / PARETE ESTERNA ---
+                // Base metallo corazzato
                 ctx.fillStyle = PALETTE.STEEL_GRAY;
                 ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
 
-                // Evidenziazione bordo superiore e sinistro (luce zenitale)
-                ctx.fillStyle = PALETTE.STEEL_LIGHT;
-                ctx.fillRect(x, y, TILE_SIZE, 2);
-                ctx.fillRect(x, y, 2, TILE_SIZE);
+                // Superficie superiore calpestabile (Walkway Grating)
+                if (topOpen) {
+                    // Bordo superiore con brillante luce zenitale
+                    ctx.fillStyle = '#eaf4ff';
+                    ctx.fillRect(x, y, TILE_SIZE, 1);
 
-                // Ombra inferiore e destra
-                ctx.fillStyle = PALETTE.DARK_NAVY;
-                ctx.fillRect(x, y + TILE_SIZE - 2, TILE_SIZE, 2);
-                ctx.fillRect(x + TILE_SIZE - 2, y, 2, TILE_SIZE);
+                    // Griglia antiscivolo calpestabile a micro-scanalature
+                    ctx.fillStyle = '#53688e';
+                    ctx.fillRect(x, y + 1, TILE_SIZE, 3);
+                    ctx.fillStyle = '#2d3b54';
+                    for (let px = 1; px < TILE_SIZE; px += 3) {
+                        ctx.fillRect(x + px, y + 1, 1, 3);
+                    }
 
-                // Rivetti d'angolo metallici
-                ctx.fillStyle = PALETTE.STEEL_HIGHLIGHT;
-                ctx.fillRect(x + 3, y + 3, 2, 2);
-                ctx.fillRect(x + TILE_SIZE - 5, y + 3, 2, 2);
-                ctx.fillRect(x + 3, y + TILE_SIZE - 5, 2, 2);
-                ctx.fillRect(x + TILE_SIZE - 5, y + TILE_SIZE - 5, 2, 2);
+                    // Ombra sotto la passerella
+                    ctx.fillStyle = '#1e293e';
+                    ctx.fillRect(x, y + 4, TILE_SIZE, 1);
+                } else {
+                    ctx.fillStyle = '#1b2438';
+                    ctx.fillRect(x, y, TILE_SIZE, 1);
+                }
 
-                // Fessura centrale con circuito al neon
-                ctx.fillStyle = '#141a29';
-                ctx.fillRect(x + 5, y + 7, TILE_SIZE - 10, 2);
-                ctx.fillStyle = PALETTE.CYBER_BLUE;
-                ctx.fillRect(x + 7, y + 7, 2, 2);
+                // Parete Sinistra
+                if (leftOpen) {
+                    ctx.fillStyle = PALETTE.STEEL_LIGHT;
+                    ctx.fillRect(x, y, 2, TILE_SIZE);
+                    // Rivetti verticali
+                    ctx.fillStyle = PALETTE.STEEL_HIGHLIGHT;
+                    ctx.fillRect(x + 1, y + 4, 1, 2);
+                    ctx.fillRect(x + 1, y + 10, 1, 2);
+                }
+
+                // Parete Destra
+                if (rightOpen) {
+                    ctx.fillStyle = PALETTE.DARK_NAVY;
+                    ctx.fillRect(x + TILE_SIZE - 2, y, 2, TILE_SIZE);
+                }
+
+                // Soffitto / Fondo inferiore
+                if (bottomOpen) {
+                    ctx.fillStyle = '#0a0e1a';
+                    ctx.fillRect(x, y + TILE_SIZE - 2, TILE_SIZE, 2);
+                    // Condotto o sporgenza industriale
+                    ctx.fillStyle = '#26344d';
+                    ctx.fillRect(x + 3, y + TILE_SIZE - 4, TILE_SIZE - 6, 2);
+                }
+
+                // Angoli speciali corazzati
+                if (topOpen && leftOpen) {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(x, y, 2, 2);
+                }
+                if (topOpen && rightOpen) {
+                    ctx.fillStyle = '#c5d8f7';
+                    ctx.fillRect(x + TILE_SIZE - 2, y, 2, 2);
+                }
                 break;
             }
 
             case TILE_TYPES.PLATFORM: {
-                // Piattaforma cyber passabile dal basso (sottile e tratteggiata)
-                ctx.fillStyle = PALETTE.STEEL_LIGHT;
+                // Piattaforma cyber passabile dal basso (vetro-metallo e barra laser ciano)
+                ctx.fillStyle = '#1c2842';
                 ctx.fillRect(x, y, TILE_SIZE, 4);
 
-                // Bordo superiore fluorescente
+                // Bordo superiore fluorescente ciano
                 ctx.fillStyle = PALETTE.CYBER_BLUE;
                 ctx.fillRect(x, y, TILE_SIZE, 1);
 
-                // Griglia di supporto inferiore a freccia
-                ctx.fillStyle = PALETTE.DARK_NAVY;
-                ctx.fillRect(x + 2, y + 4, 3, 4);
-                ctx.fillRect(x + TILE_SIZE - 5, y + 4, 3, 4);
+                // Luce neon centrale
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(x + 2, y, TILE_SIZE - 4, 1);
+
+                // Supporti diagonali inferiori
+                ctx.fillStyle = PALETTE.STEEL_LIGHT;
+                ctx.fillRect(x + 2, y + 4, 2, 3);
+                ctx.fillRect(x + TILE_SIZE - 4, y + 4, 2, 3);
                 break;
             }
 

@@ -216,6 +216,75 @@ class SoundFX {
             osc.stop(t + 0.26);
         });
     }
+
+    /**
+     * Beep leggero per navigazione menu (blip arcade)
+     */
+    playSelect() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const t = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(880, t);
+        osc.frequency.exponentialRampToValueAtTime(1320, t + 0.04);
+
+        gain.gain.setValueAtTime(0.08, t);
+        gain.gain.linearRampToValueAtTime(0.001, t + 0.04);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(t);
+        osc.stop(t + 0.05);
+    }
+
+    /**
+     * Suono di conferma selezione / inizio missione (chime a 2 toni)
+     */
+    playConfirm() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const t = this.ctx.currentTime;
+        [587.33, 880.00].forEach((freq, i) => {
+            const time = t + i * 0.07;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(freq, time);
+
+            gain.gain.setValueAtTime(0.16, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.12);
+
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+
+            osc.start(time);
+            osc.stop(time + 0.13);
+        });
+    }
+
+    /**
+     * Attiva/Disattiva l'audio di gioco
+     */
+    toggleAudio() {
+        this.enabled = !this.enabled;
+        localStorage.setItem('turclon_audio_enabled', this.enabled ? '1' : '0');
+        if (this.enabled) {
+            this.playConfirm();
+        }
+        return this.enabled;
+    }
 }
 
 export const audio = new SoundFX();
+if (localStorage.getItem('turclon_audio_enabled') === '0') {
+    audio.enabled = false;
+}

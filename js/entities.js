@@ -392,6 +392,7 @@ export class Player {
             const bulletY = this.y + 11;
             bullets.push(new Bullet(bulletX, bulletY, this.facing));
             audio.playShoot();
+            particleSystem.emitShell(this.x + (this.facing > 0 ? 8 : 10), this.y + 9, this.facing);
         }
 
         // Controllo caduta nel baratro
@@ -550,37 +551,39 @@ export class Player {
         ctx.fillRect(2, 20 + legL, 4, 2);
         ctx.fillRect(8, 20 + legR, 4, 2);
 
-        // 2. Torace / Armatura Pesante
+        // 2. Torace / Armatura Pesante (con respiro cibernetico in idle)
+        const breath = (this.state === 'idle') ? Math.round(Math.sin(this.animTimer * 2.5) * 0.6) : 0;
+
         ctx.fillStyle = PALETTE.DARK_NAVY;
-        ctx.fillRect(1, 6, 11, 9);
+        ctx.fillRect(1, 6 + breath, 11, 9);
         ctx.fillStyle = PALETTE.CYBER_BLUE;
-        ctx.fillRect(2, 7, 9, 3); // Piastra pettorale ciano brillante
+        ctx.fillRect(2, 7 + breath, 9, 3); // Piastra pettorale ciano brillante
 
         // Nucleo reattore sul petto
         ctx.fillStyle = PALETTE.NEO_YELLOW;
-        ctx.fillRect(5, 9, 3, 3);
+        ctx.fillRect(5, 9 + breath, 3, 3);
 
         // 3. Casco con Visore Turrican / Samus Aran
         ctx.fillStyle = PALETTE.STEEL_GRAY;
-        ctx.fillRect(2, 0, 9, 6);
-        // Visore arancione / oro riflettente
+        ctx.fillRect(2, 0 + breath, 9, 6);
+        // Visore arancione / oro riflettente con bagliore al neon
         ctx.fillStyle = PALETTE.GOLD_GLOW;
-        ctx.fillRect(6, 2, 5, 2);
+        ctx.fillRect(6, 2 + breath, 5, 2);
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(8, 2, 2, 1); // Riflesso luce sul visore
+        ctx.fillRect(8, 2 + breath, 2, 1); // Riflesso luce sul visore
 
         // 4. Cannone al Braccio Cyber-Blaster
         ctx.fillStyle = PALETTE.STEEL_LIGHT;
-        ctx.fillRect(8, 9, 7, 4);
+        ctx.fillRect(8, 9 + breath, 7, 4);
         ctx.fillStyle = PALETTE.DARK_NAVY;
-        ctx.fillRect(13, 9, 3, 4); // Bocca da fuoco del cannone
+        ctx.fillRect(13, 9 + breath, 3, 4); // Bocca da fuoco del cannone
 
         // Effetto Vampa di sparo (Muzzle Flash)
         if (this.muzzleFlashTimer > 0) {
             ctx.fillStyle = PALETTE.NEO_YELLOW;
-            ctx.fillRect(16, 8, 4, 6);
+            ctx.fillRect(16, 8 + breath, 4, 6);
             ctx.fillStyle = '#ffffff';
-            ctx.fillRect(17, 9, 2, 4);
+            ctx.fillRect(17, 9 + breath, 2, 4);
         }
 
         ctx.restore();

@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>TURCLON - Neo-Geo 16-Bit Run 'n' Gun</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -35,28 +38,51 @@
         <canvas id="game-canvas" width="384" height="216"></canvas>
         <div class="scanlines"></div>
 
-        <!-- SCHERMATA INIZIALE (START OVERLAY) -->
+        <!-- SCHERMATA INIZIALE (START OVERLAY) ARCADE NEO-GEO -->
         <div id="start-overlay" class="overlay">
-            <!-- Immagine Logo TURCLON Ufficiale -->
-            <img src="assets/logo_cropped.png" alt="TURCLON" class="title-logo">
+            <div class="title-logo-wrapper">
+                <img src="assets/logo_cropped.png" alt="TURCLON" class="title-logo">
+            </div>
             <p id="start-subtitle" class="subtitle">NEO-GEO 16-BIT RUN 'N' GUN</p>
 
-            <div class="instructions">
-                <p id="ctrl-desktop-header"><strong>[ DESKTOP CONTROLS ]</strong></p>
-                <p id="ctrl-move">Move: <strong>WASD</strong> or <strong>Arrow Keys</strong></p>
-                <p id="ctrl-action">Jump: <strong>Space</strong> or <strong>Z</strong> | Fire: <strong>X</strong> or <strong>K</strong></p>
-                <p id="ctrl-drop">Drop through platforms: <strong>Down (S / Down Arrow) + Jump</strong></p>
-                <p id="ctrl-esc">Pause / Return to menu: <strong>ESC</strong></p>
-                <br>
-                <p id="ctrl-mobile-header"><strong>[ MOBILE TOUCH ]</strong></p>
-                <p id="ctrl-mobile-desc">Virtual D-Pad on left | Jump (A) and Fire (B) on right</p>
+            <!-- ARCADE MAIN MENU -->
+            <div class="arcade-menu">
+                <button id="btn-start" class="btn-arcade btn-menu-start blink">▶ START MISSION</button>
+                <div class="menu-sub-row">
+                    <button id="btn-how-to-play" class="btn-arcade btn-menu-sub">⚙ HOW TO PLAY</button>
+                    <a href="editor.html" id="btn-open-editor" class="btn-arcade btn-menu-sub" style="text-decoration: none;">🛠 LEVEL LAB</a>
+                    <button id="btn-toggle-audio" class="btn-arcade btn-menu-sub">🔊 AUDIO: ON</button>
+                </div>
             </div>
 
-            <button id="btn-start" class="btn-arcade blink">TAP OR PRESS SPACE TO START</button>
-            <a href="editor.html" id="btn-open-editor" class="btn-arcade btn-secondary" style="text-decoration: none;">OPEN LEVEL EDITOR</a>
+            <!-- FOOTER COIN-OP CLASSICO -->
+            <div class="arcade-footer">
+                <p id="arcade-coin-text" class="arcade-coin-prompt">CREDITS: 01 // PRESS START</p>
+                <p id="credits-text" class="credits-small">© 2026 MICHELE & DANIELE // ALL RIGHTS RESERVED</p>
+            </div>
+        </div>
 
-            <!-- CREDITI IN PICCOLO -->
-            <p id="credits-text" class="credits-small">Creato da Michele e Daniele</p>
+        <!-- MODALE ISTRUZIONI (HOW TO PLAY / TACTICAL MANUAL) -->
+        <div id="how-to-play-modal" class="overlay hidden">
+            <div class="terminal-box manual-box">
+                <div class="manual-header">
+                    <h2 id="manual-title" class="terminal-title">TACTICAL MANUAL</h2>
+                    <button id="btn-close-manual" class="modal-close">&times;</button>
+                </div>
+
+                <div class="instructions manual-body">
+                    <p id="ctrl-desktop-header" class="manual-section-header"><strong>[ DESKTOP CONTROLS ]</strong></p>
+                    <p id="ctrl-move">Move: <strong>WASD</strong> or <strong>Arrow Keys</strong></p>
+                    <p id="ctrl-action">Jump: <strong>Space</strong> or <strong>Z</strong> | Fire: <strong>X</strong> or <strong>K</strong></p>
+                    <p id="ctrl-drop">Drop through platforms: <strong>Down (S / Down Arrow) + Jump</strong></p>
+                    <p id="ctrl-esc">Pause / Return to menu: <strong>ESC</strong></p>
+                    <div class="manual-divider"></div>
+                    <p id="ctrl-mobile-header" class="manual-section-header"><strong>[ MOBILE TOUCH ]</strong></p>
+                    <p id="ctrl-mobile-desc">Virtual D-Pad on left | Jump (A) and Fire (B) on right</p>
+                </div>
+
+                <button id="btn-dismiss-manual" class="btn-arcade" style="margin-top: 6px; padding: 8px 24px;">CLOSE MANUAL</button>
+            </div>
         </div>
 
         <!-- MODALE CONFERMA USCITA / PAUSA (TASTO ESC) -->

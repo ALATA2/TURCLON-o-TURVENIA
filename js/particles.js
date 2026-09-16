@@ -59,13 +59,33 @@ export class ParticleSystem {
     }
 
     /**
+     * Bossolo dorato espulso allo sparo con fisica di rimbalzo
+     */
+    emitShell(x, y, facing) {
+        const vx = -facing * (35 + Math.random() * 30);
+        const vy = -(55 + Math.random() * 35);
+        this.particles.push({
+            x, y,
+            vx, vy,
+            color: '#ffd700',
+            size: 2,
+            maxLife: 0.7,
+            life: 0.7,
+            gravity: 450,
+            isShell: true
+        });
+    }
+
+    /**
      * Poff di polvere all'atterraggio o al salto del giocatore
      */
     emitDust(x, y, count = 6) {
+        const colors = ['#62799e', '#8ea5cc', '#3b4c68'];
         for (let i = 0; i < count; i++) {
-            const vx = (Math.random() - 0.5) * 60;
-            const vy = -Math.random() * 30;
-            this.add(x, y, vx, vy, PALETTE.STEEL_LIGHT, 2, 0.25, 40);
+            const vx = (Math.random() - 0.5) * 55;
+            const vy = -Math.random() * 25;
+            const c = colors[Math.floor(Math.random() * colors.length)];
+            this.add(x, y, vx, vy, c, 1.5 + Math.random() * 1.5, 0.28, 30);
         }
     }
 
@@ -83,9 +103,9 @@ export class ParticleSystem {
     }
 
     /**
-     * Aggiorna posizione e ciclo vitale
+     * Aggiorna posizione, fisica e ciclo vitale delle particelle
      */
-    update(dt) {
+    update(dt, tilemap = null) {
         for (let i = this.particles.length - 1; i >= 0; i--) {
             const p = this.particles[i];
             p.life -= dt;
@@ -96,6 +116,17 @@ export class ParticleSystem {
             p.vy += p.gravity * dt;
             p.x += p.vx * dt;
             p.y += p.vy * dt;
+
+            // Rimbalzo bossoli sulle superfici solide
+            if (p.isShell && tilemap && p.vy > 0) {
+                const col = Math.floor(p.x / 16);
+                const row = Math.floor((p.y + p.size) / 16);
+                if (tilemap.isSolid(col, row)) {
+                    p.y = row * 16 - p.size;
+                    p.vy = -p.vy * 0.45;
+                    p.vx *= 0.6;
+                }
+            }
         }
 
         for (let i = this.popups.length - 1; i >= 0; i--) {
